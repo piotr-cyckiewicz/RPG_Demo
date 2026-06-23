@@ -13,30 +13,67 @@ ARPGMovementGridManager::ARPGMovementGridManager()
 
 void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties)
 {
-	Cells.Add(CellProperties);
+	if (!IsValid(CellProperties.CellActor)) {
+		UE_LOG(LogTemp, Error, TEXT("CellActor is not valid"));
+		return;
+	}
 	
+
 	FIntVector Coords;
-	Coords.Z = FMath::RoundToInt(CellProperties.WorldPosition.Z);
-	//Coords.X = FMath::RoundToInt(CellProperties.WorldPosition/)
+	Coords.Z = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().Z);
+	Coords.X = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().X / CellSize);
+	Coords.Y = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().Y / CellSize);
+	
+	CoordinatesToIndex.Add(Coords, Cells.Num());
+
+	for (AActor* CellActor : CellProperties.temporaryNeighbours) {
+		temporaryNeighbours.Add(FIntActorPair(Cells.Num(), CellActor));
+	}
+	CellProperties.temporaryNeighbours.Empty();
+
+
+	Cells.Add(CellProperties);
 }
 
-void ARPGMovementGridManager::ClearCells(bool PreserveMemoryAllocations)
+
+
+void ARPGMovementGridManager::BindCells()
 {
-	// Reseting the array with size 0 is probably unoptimized as hell due to rellocating the whole array later as we add elements to it,
-	// but it runs in the editor, so it's probably fine.
-	if (PreserveMemoryAllocations) {
-		Cells.Reset(0);
-		CoordToIndex.Reset();
+	for (const FIntActorPair& Connection : temporaryNeighbours) {
+		if (Connection.Num >= Cells.Num()) {
+			UE_LOG(LogTemp, Error, TEXT("Index in tempoaryNeighbours is greater/equal to size of Cells array"));
+			continue;
+		}
+		if (!IsValid(Connection.Actor)) {
+			UE_LOG(LogTemp, Error, TEXT("Actor referenced in tempoaryNeighbours is not valid"));
+			continue;
+		}
+
+		int CellID = -1;
+		for (int i = 0; i < Cells.Num(); i++) {
+			if (Cells[i].CellActor == Connection.Actor) {
+				CellID = i;
+				break;
+			}
+		}
+
+		if (CellID == -1) {
+			UE_LOG(LogTemp, Error, TEXT("Actor listed in temporaryNeighbours array not found"));
+			continue;
+		}
+		if (Connection.Num == CellID) {
+			UE_LOG(LogTemp, Error, TEXT("Neighbour of the cell in temporaryNeighbours refers to the cell itself"));
+			continue;
+		}
+
+		Cells[Connection.Num].Neighbors.Add(CellID);
 	}
-	else {
-		Cells.Empty();
-		CoordToIndex.Empty();
-	}
+	temporaryNeighbours.Empty();
 }
 
-// Called when the game starts or when spawned
-//void ARPGMovementGridManager::BeginPlay()
-//{
-	//Super::BeginPlay();	
-//}
-
+void ARPGMovementGridManager::ClearCells()
+{
+	Cells.Empty();
+	CoordinatesToIndex.Empty();
+	temporaryNeighbours.Empty();
+}
