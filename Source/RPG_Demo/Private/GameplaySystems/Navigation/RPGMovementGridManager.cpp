@@ -77,3 +77,8 @@ void ARPGMovementGridManager::ClearCells()
 	CoordinatesToIndex.Empty();
 	temporaryNeighbours.Empty();
 }
+
+int32 ARPGMovementGridManager::GetNumberOfCells()
+{
+	return Cells.Num();
+}

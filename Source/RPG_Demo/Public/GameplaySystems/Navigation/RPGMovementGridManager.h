@@ -47,7 +47,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ClearCells();
 
-
+	UFUNCTION()
+	int32 GetNumberOfCells();
 
 
 protected:
