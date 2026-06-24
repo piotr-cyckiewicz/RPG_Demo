@@ -11,6 +11,10 @@ struct RPG_DEMO_API FMovementGridCellProperties
 {
     GENERATED_BODY()
 
+    // We need world position of this cell, as cell actor is editor only actor, and we cannot get location from it in cooked builds.
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    FVector WorldPosition;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
     float BaseMovementCost = 1.f;
 

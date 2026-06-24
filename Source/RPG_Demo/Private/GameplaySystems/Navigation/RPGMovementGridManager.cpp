@@ -18,11 +18,12 @@ void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties
 		return;
 	}
 	
+	CellProperties.WorldPosition = CellProperties.CellActor->GetActorLocation();
 
 	FIntVector Coords;
-	Coords.Z = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().Z); // this is intentional, may be changed to Z/CellHeight later
-	Coords.X = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().X / CellSize);
-	Coords.Y = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().Y / CellSize);
+	Coords.Z = FMath::RoundToInt(CellProperties.WorldPosition.Z); // this is intentional, may be changed to Z/CellHeight later
+	Coords.X = FMath::RoundToInt(CellProperties.WorldPosition.X / CellSize);
+	Coords.Y = FMath::RoundToInt(CellProperties.WorldPosition.Y / CellSize);
 	
 	if (CoordinatesToIndex.Contains(Coords)) {
 		UE_LOG(LogTemp, Error, TEXT("Duplicate cell at coords %s"), *Coords.ToString());
