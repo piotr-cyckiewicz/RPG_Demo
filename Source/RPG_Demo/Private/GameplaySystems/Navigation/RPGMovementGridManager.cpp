@@ -20,10 +20,13 @@ void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties
 	
 
 	FIntVector Coords;
-	Coords.Z = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().Z);
+	Coords.Z = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().Z); // this is intentional, may be changed to Z/CellHeight later
 	Coords.X = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().X / CellSize);
 	Coords.Y = FMath::RoundToInt(CellProperties.CellActor->GetActorLocation().Y / CellSize);
 	
+	if (CoordinatesToIndex.Contains(Coords)) {
+		UE_LOG(LogTemp, Error, TEXT("Duplicate cell at coords %s"), *Coords.ToString());
+	}
 	CoordinatesToIndex.Add(Coords, Cells.Num());
 
 	for (AActor* CellActor : CellProperties.temporaryNeighbours) {
@@ -39,6 +42,7 @@ void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties
 
 void ARPGMovementGridManager::BindCells()
 {
+	// This is very slow, but it's fine for editor work. Binds 10k cellls without issue in dozen of seconds.
 	for (const FIntActorPair& Connection : temporaryNeighbours) {
 		if (Connection.Num >= Cells.Num()) {
 			UE_LOG(LogTemp, Error, TEXT("Index in tempoaryNeighbours is greater/equal to size of Cells array"));
@@ -49,8 +53,8 @@ void ARPGMovementGridManager::BindCells()
 			continue;
 		}
 
-		int CellID = -1;
-		for (int i = 0; i < Cells.Num(); i++) {
+		int32 CellID = -1;
+		for (int32 i = 0; i < Cells.Num(); i++) {
 			if (Cells[i].CellActor == Connection.Actor) {
 				CellID = i;
 				break;

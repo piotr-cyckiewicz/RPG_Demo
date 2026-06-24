@@ -8,7 +8,7 @@
 #include "RPGMovementGridManager.generated.h"
 
 USTRUCT(BlueprintType)
-struct FIntActorPair
+struct RPG_DEMO_API FIntActorPair
 {
 	GENERATED_BODY()
 
