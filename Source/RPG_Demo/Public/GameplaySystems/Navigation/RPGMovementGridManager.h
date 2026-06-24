@@ -47,6 +47,27 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ClearCells();
 
+
+
+	virtual void BeginPlay() override;
+
+
+
+	UFUNCTION(BlueprintCallable)
+	FIntVector GetLogicalCoordinates(FVector WorldPosition);
+
+	UFUNCTION(BlueprintCallable)
+	FVector GetWorldPosition(int32 CellID);
+
+	UFUNCTION(BlueprintCallable)
+	int32 GetCellIndex(FVector WorldPosition);
+
+	UFUNCTION(BlueprintCallable)
+	TArray<int32> GetPath(FVector Start, FVector End, ECombatTeams CharacterTeam, float MaxCost = 40);
+
+	UFUNCTION()
+	float GetRawDistanceBetweenCells(int32 StartCell, int32 EndCell);
+
 	UFUNCTION()
 	int32 GetNumberOfCells();
 
@@ -66,6 +87,16 @@ protected:
 
 	UPROPERTY(BlueprintReadOnly, EditDefaultsOnly, Category = "Grid")
 	TObjectPtr<UPhysicalMaterial> WalkablePhysMaterial;
+
+
+	UPROPERTY()
+	TArray<float> GCost;
+	UPROPERTY()
+	TArray<int32> CameFrom;
+	UPROPERTY()
+	TArray<uint32> SearchStamp;
+	UPROPERTY()
+	uint32 CurrentSearch = 0;
 
 
 

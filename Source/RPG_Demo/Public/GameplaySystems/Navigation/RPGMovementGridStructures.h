@@ -15,8 +15,12 @@ struct RPG_DEMO_API FMovementGridCellProperties
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
     FVector WorldPosition;
 
+    // Coordinates normalized to the grid
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+    FIntVector Coordinates;
+
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-    float BaseMovementCost = 1.f;
+    int32 BaseMovementCost = 1;
 
     UPROPERTY()
     TMap<ECombatTeams, int32> TeamDependentMovementCost;
@@ -40,6 +44,8 @@ struct RPG_DEMO_API FMovementGridCellProperties
     FMovementGridCellProperties() {
         this->BaseMovementCost = 1.0f;
         this->TeamDependentMovementCost = TMap<ECombatTeams, int32>();
+        this->TeamDependentMovementCost.Add(ECombatTeams::PlayerTeam, 0);
+        this->TeamDependentMovementCost.Add(ECombatTeams::Ally1, 0);
     }
 
     FMovementGridCellProperties(AActor* CellActor, TArray<TObjectPtr<AActor>> temporaryNeighboursm, float BaseMovementCost = 1.f, TMap<ECombatTeams, int32> TeamDependentMovementCost = TMap<ECombatTeams, int32>()) {
@@ -47,5 +53,7 @@ struct RPG_DEMO_API FMovementGridCellProperties
         this->temporaryNeighbours = temporaryNeighboursm;
         this->BaseMovementCost = BaseMovementCost;
         this->TeamDependentMovementCost = TeamDependentMovementCost;
+        this->TeamDependentMovementCost.Add(ECombatTeams::PlayerTeam, 0);
+        this->TeamDependentMovementCost.Add(ECombatTeams::Ally1, 0);
     }
 };

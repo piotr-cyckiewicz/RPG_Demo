@@ -2,6 +2,7 @@
 
 
 #include "GameplaySystems/Navigation/RPGMovementGridManager.h"
+#include "Algo/Reverse.h"
 
 // Sets default values
 ARPGMovementGridManager::ARPGMovementGridManager()
@@ -20,11 +21,8 @@ void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties
 	
 	CellProperties.WorldPosition = CellProperties.CellActor->GetActorLocation();
 
-	FIntVector Coords;
-	Coords.Z = FMath::RoundToInt(CellProperties.WorldPosition.Z); // this is intentional, may be changed to Z/CellHeight later
-	Coords.X = FMath::RoundToInt(CellProperties.WorldPosition.X / CellSize);
-	Coords.Y = FMath::RoundToInt(CellProperties.WorldPosition.Y / CellSize);
-	
+	FIntVector Coords = GetLogicalCoordinates(CellProperties.WorldPosition);
+	CellProperties.Coordinates = Coords;
 	if (CoordinatesToIndex.Contains(Coords)) {
 		UE_LOG(LogTemp, Error, TEXT("Duplicate cell at coords %s"), *Coords.ToString());
 	}
@@ -43,7 +41,7 @@ void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties
 
 void ARPGMovementGridManager::BindCells()
 {
-	// This is very slow, but it's fine for editor work. Binds 10k cellls without issue in dozen of seconds.
+	// This is very slow, but it's fine for editor work. Binds 10k cellls without issues in couple of seconds.
 	for (const FIntActorPair& Connection : temporaryNeighbours) {
 		if (Connection.Num >= Cells.Num()) {
 			UE_LOG(LogTemp, Error, TEXT("Index in tempoaryNeighbours is greater/equal to size of Cells array"));
@@ -81,6 +79,122 @@ void ARPGMovementGridManager::ClearCells()
 	Cells.Empty();
 	CoordinatesToIndex.Empty();
 	temporaryNeighbours.Empty();
+}
+
+void ARPGMovementGridManager::BeginPlay()
+{
+	Super::BeginPlay();
+
+	if (GCost.Num() != Cells.Num())
+		GCost.SetNum(Cells.Num());
+	if (CameFrom.Num() != Cells.Num())
+		CameFrom.SetNum(Cells.Num());
+	if (SearchStamp.Num() != Cells.Num())
+		SearchStamp.SetNum(Cells.Num());
+}
+
+FIntVector ARPGMovementGridManager::GetLogicalCoordinates(FVector WorldPosition)
+{
+	FIntVector Result;
+	Result.Z = FMath::RoundToInt(WorldPosition.Z / CellHeight);
+	Result.X = FMath::RoundToInt(WorldPosition.X / CellSize);
+	Result.Y = FMath::RoundToInt(WorldPosition.Y / CellSize);
+	return Result;
+}
+
+FVector ARPGMovementGridManager::GetWorldPosition(int32 CellID)
+{
+	return Cells[CellID].WorldPosition;
+}
+
+int32 ARPGMovementGridManager::GetCellIndex(FVector WorldPosition)
+{
+	int32* Result = CoordinatesToIndex.Find(GetLogicalCoordinates(WorldPosition));
+	
+	if (!Result)
+		return -1;
+	return *Result;
+}
+
+TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, ECombatTeams CharacterTeam, float MaxCost)
+{
+	TArray<int32> Result;
+	int32 StartIndex = GetCellIndex(Start);
+	int32 EndIndex = GetCellIndex(End);
+
+	if (StartIndex == -1 || EndIndex == -1)
+		return Result;
+	
+	if (StartIndex == EndIndex)
+		return Result;
+
+	if(GetRawDistanceBetweenCells(StartIndex, EndIndex) / CellSize > MaxCost)
+		return Result;
+
+
+	CurrentSearch++;
+	GCost[StartIndex] = 0;
+
+	auto Predicate = [](const TPair<int32, float>& A, const TPair<int32, float>& B)
+	{
+		return A.Value < B.Value; //lambda for comparing which cell is more promising
+	};
+	TArray<TPair<int32, float>> SearchHeap; // Heap of cells and its FCosts
+	SearchHeap.Add(TPair<int32, float>(StartIndex,
+		GetRawDistanceBetweenCells(StartIndex, EndIndex) / CellSize)); //Start cell is the first to investigate
+
+	
+
+
+	bool PathFound = false;
+
+	while (SearchHeap.Num() > 0) {
+		TPair<int32, float> Node;
+		SearchHeap.HeapPop(Node, Predicate); //We choose cell with lowest FCost and delete it from the heap (won't need it later)
+		if (Node.Key == EndIndex) { PathFound = true; break; } //if this cell is our end cell, we stop the search
+		if (Node.Value > MaxCost) break;
+		if (Node.Value > GCost[Node.Key] +
+			GetRawDistanceBetweenCells(Node.Key, EndIndex) / CellSize) continue; //node with oudated cost, we ignore it as has improper data
+
+		for (int32 NeighbourID : Cells[Node.Key].Neighbors) {
+			float NewG = GCost[Node.Key] + Cells[Node.Key].TeamDependentMovementCost.FindRef(CharacterTeam); //"Move from here" cost rather than "Move here" cost
+			if (Cells[Node.Key].Coordinates.X != Cells[NeighbourID].Coordinates.X &&
+				Cells[Node.Key].Coordinates.Y != Cells[NeighbourID].Coordinates.Y) {
+				NewG += Cells[Node.Key].TeamDependentMovementCost.FindRef(CharacterTeam); //Moving diagonally costs 2x more
+			}
+			if (SearchStamp[NeighbourID] != CurrentSearch || NewG < GCost[NeighbourID]) { // We ignore GCost of the cell, if it wasn't touched this search yet
+				SearchStamp[NeighbourID] = CurrentSearch;
+				GCost[NeighbourID] = NewG;
+				CameFrom[NeighbourID] = Node.Key;
+				SearchHeap.HeapPush(TPair<int32, float>(NeighbourID,
+					NewG + GetRawDistanceBetweenCells(NeighbourID, EndIndex) / CellSize), Predicate);
+			}
+		}
+	}
+	
+
+
+
+
+	if(!PathFound) return Result;
+
+	Result.Add(EndIndex);
+	
+	int32 CellPath = EndIndex;
+	while (CameFrom[CellPath] != StartIndex) {
+		Result.Add(CameFrom[CellPath]);
+		CellPath = CameFrom[CellPath];
+	}
+	Result.Add(StartIndex);
+
+	Algo::Reverse(Result);
+	return Result;
+}
+
+float ARPGMovementGridManager::GetRawDistanceBetweenCells(int32 StartCell, int32 EndCell)
+{
+	FVector Difference = Cells[StartCell].WorldPosition - Cells[EndCell].WorldPosition;
+	return Difference.Length();
 }
 
 int32 ARPGMovementGridManager::GetNumberOfCells()
