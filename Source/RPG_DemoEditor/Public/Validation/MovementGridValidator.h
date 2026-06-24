@@ -14,7 +14,7 @@
  */
 
 UCLASS(Abstract)
-class RPG_DEMO_API UMovementGridValidator : public UEditorValidatorBase
+class RPG_DEMOEDITOR_API UMovementGridValidator : public UEditorValidatorBase
 {
 	GENERATED_BODY()
 	
