@@ -144,6 +144,7 @@ TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, EComb
 
 	CurrentSearch++;
 	GCost[StartIndex] = 0;
+	SearchStamp[StartIndex] = CurrentSearch;
 
 	auto Predicate = [](const TPair<int32, float>& A, const TPair<int32, float>& B)
 	{
@@ -161,8 +162,8 @@ TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, EComb
 	while (SearchHeap.Num() > 0) {
 		TPair<int32, float> Node;
 		SearchHeap.HeapPop(Node, Predicate); //We choose cell with lowest FCost and delete it from the heap (won't need it later)
-		if (Node.Key == EndIndex) { PathFound = true; break; } //if this cell is our end cell, we stop the search
 		if (Node.Value > MaxCost) break;
+		if (Node.Key == EndIndex) { PathFound = true; break; } //if this cell is our end cell, we stop the search
 		if (Node.Value > GCost[Node.Key] +
 			GetRawDistanceBetweenCells(Node.Key, EndIndex) / CellSize) continue; //node with oudated cost, we ignore it as has improper data
 
