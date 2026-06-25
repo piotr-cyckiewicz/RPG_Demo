@@ -44,8 +44,8 @@ struct RPG_DEMO_API FMovementGridCellProperties
     FMovementGridCellProperties() {
         this->BaseMovementCost = 1.0f;
         this->TeamDependentMovementCost = TMap<ECombatTeams, int32>();
-        this->TeamDependentMovementCost.Add(ECombatTeams::PlayerTeam, 0);
-        this->TeamDependentMovementCost.Add(ECombatTeams::Ally1, 0);
+        this->TeamDependentMovementCost.Add(ECombatTeams::PlayerTeam, 1);
+        this->TeamDependentMovementCost.Add(ECombatTeams::Ally1, 1);
     }
 
     FMovementGridCellProperties(AActor* CellActor, TArray<TObjectPtr<AActor>> temporaryNeighboursm, float BaseMovementCost = 1.f, TMap<ECombatTeams, int32> TeamDependentMovementCost = TMap<ECombatTeams, int32>()) {
@@ -53,7 +53,7 @@ struct RPG_DEMO_API FMovementGridCellProperties
         this->temporaryNeighbours = temporaryNeighboursm;
         this->BaseMovementCost = BaseMovementCost;
         this->TeamDependentMovementCost = TeamDependentMovementCost;
-        this->TeamDependentMovementCost.Add(ECombatTeams::PlayerTeam, 0);
-        this->TeamDependentMovementCost.Add(ECombatTeams::Ally1, 0);
+        this->TeamDependentMovementCost.Add(ECombatTeams::PlayerTeam, 1);
+        this->TeamDependentMovementCost.Add(ECombatTeams::Ally1, 1);
     }
 };
