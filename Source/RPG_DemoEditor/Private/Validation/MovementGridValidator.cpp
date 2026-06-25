@@ -27,7 +27,7 @@ EDataValidationResult UMovementGridValidator::ValidateLoadedAsset_Implementation
     const AWorldSettings* Settings = World->GetWorldSettings();
     const TSubclassOf<AGameModeBase> GM = Settings ? Settings->DefaultGameMode : nullptr;
 
-    if (GM != TargetGameModeClass && GM)
+    if (GM != TargetGameModeClass && GM) //We assume that maps without GM override are explorable maps, as default gamemode is the exploration one
     {
         AssetPasses(InAsset);
         return EDataValidationResult::Valid;
@@ -48,7 +48,7 @@ EDataValidationResult UMovementGridValidator::ValidateLoadedAsset_Implementation
         return EDataValidationResult::Invalid;
     }
 
-    if (Manager->GetNumberOfCells() <= 10) {
+    if (Manager->GetNumberOfCells() < 10) {
         AssetFails(InAsset, FText::Format(NSLOCTEXT("Validation", "WrongCellCount",
             "Map has only {0} Movement Grid Cells. That's not very playable, is it? ;) At least 10 is required"),
             FText::AsNumber(Manager->GetNumberOfCells())));
