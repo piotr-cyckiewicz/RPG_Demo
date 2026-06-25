@@ -33,6 +33,8 @@ struct RPG_DEMO_API FMovementGridCellProperties
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
     TObjectPtr<AActor> CellActor;
 
+    // TODO: Add pointer to character occupying this cell, once it's in the project
+
 
 
     // This is temporal array used to fill proper Neighbours array and will be empty after the process is done
