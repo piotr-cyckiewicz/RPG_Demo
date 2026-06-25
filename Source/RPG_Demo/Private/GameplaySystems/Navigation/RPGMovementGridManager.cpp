@@ -116,7 +116,14 @@ int32 ARPGMovementGridManager::GetCellIndex(FVector WorldPosition)
 	return *Result;
 }
 
-TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, ECombatTeams CharacterTeam, float MaxCost)
+int32 ARPGMovementGridManager::GetMoveCost(int32 Cell, ECombatTeams CharacterTeam)
+{
+	if (int32* Cost = Cells[Cell].TeamDependentMovementCost.Find(CharacterTeam))
+		return *Cost;
+	return Cells[Cell].BaseMovementCost;
+}
+
+TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, ECombatTeams Team, float MaxCost)
 {
 	TArray<int32> Result;
 	int32 StartIndex = GetCellIndex(Start);
@@ -160,10 +167,10 @@ TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, EComb
 			GetRawDistanceBetweenCells(Node.Key, EndIndex) / CellSize) continue; //node with oudated cost, we ignore it as has improper data
 
 		for (int32 NeighbourID : Cells[Node.Key].Neighbors) {
-			float NewG = GCost[Node.Key] + Cells[Node.Key].TeamDependentMovementCost.FindRef(CharacterTeam); //"Move from here" cost rather than "Move here" cost
+			float NewG = GCost[Node.Key] + GetMoveCost(Node.Key, Team); //"Move from here" cost rather than "Move here" cost
 			if (Cells[Node.Key].Coordinates.X != Cells[NeighbourID].Coordinates.X &&
 				Cells[Node.Key].Coordinates.Y != Cells[NeighbourID].Coordinates.Y) {
-				NewG += Cells[Node.Key].TeamDependentMovementCost.FindRef(CharacterTeam) - 0.001f; //Moving diagonally costs 2x more, but we need to favor one diagonal move over two simple ones
+				NewG += GetMoveCost(Node.Key, Team) - 0.001f; //Moving diagonally costs 2x more, but we need to favor one diagonal move over two simple ones
 			}
 			if (SearchStamp[NeighbourID] != CurrentSearch || NewG < GCost[NeighbourID]) { // We ignore GCost of the cell, if it wasn't touched this search yet
 				SearchStamp[NeighbourID] = CurrentSearch;

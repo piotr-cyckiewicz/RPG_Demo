@@ -63,7 +63,10 @@ public:
 	int32 GetCellIndex(FVector WorldPosition);
 
 	UFUNCTION(BlueprintCallable)
-	TArray<int32> GetPath(FVector Start, FVector End, ECombatTeams CharacterTeam, float MaxCost = 40);
+	int32 GetMoveCost(int32 Cell, ECombatTeams CharacterTeam);
+
+	UFUNCTION(BlueprintCallable)
+	TArray<int32> GetPath(FVector Start, FVector End, ECombatTeams Team, float MaxCost = 40);
 
 	UFUNCTION()
 	float GetRawDistanceBetweenCells(int32 StartCell, int32 EndCell);
