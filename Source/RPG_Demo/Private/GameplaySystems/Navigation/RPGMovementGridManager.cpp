@@ -131,6 +131,9 @@ TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, EComb
 	if(GetRawDistanceBetweenCells(StartIndex, EndIndex) / CellSize > MaxCost)
 		return Result;
 
+	if(MaxCost > 300)
+		UE_LOG(LogTemp, Warning, TEXT("Too big cost of a path may result in inproper cost calculation"));
+
 
 	CurrentSearch++;
 	GCost[StartIndex] = 0;
@@ -160,7 +163,7 @@ TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, EComb
 			float NewG = GCost[Node.Key] + Cells[Node.Key].TeamDependentMovementCost.FindRef(CharacterTeam); //"Move from here" cost rather than "Move here" cost
 			if (Cells[Node.Key].Coordinates.X != Cells[NeighbourID].Coordinates.X &&
 				Cells[Node.Key].Coordinates.Y != Cells[NeighbourID].Coordinates.Y) {
-				NewG += Cells[Node.Key].TeamDependentMovementCost.FindRef(CharacterTeam); //Moving diagonally costs 2x more
+				NewG += Cells[Node.Key].TeamDependentMovementCost.FindRef(CharacterTeam) - 0.001f; //Moving diagonally costs 2x more, but we need to favor one diagonal move over two simple ones
 			}
 			if (SearchStamp[NeighbourID] != CurrentSearch || NewG < GCost[NeighbourID]) { // We ignore GCost of the cell, if it wasn't touched this search yet
 				SearchStamp[NeighbourID] = CurrentSearch;
