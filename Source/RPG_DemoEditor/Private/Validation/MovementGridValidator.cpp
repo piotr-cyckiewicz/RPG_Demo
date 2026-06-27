@@ -2,6 +2,9 @@
 
 
 #include "Validation/MovementGridValidator.h"
+#include "GameFramework/GameModeBase.h"
+#include "GameplaySystems/Navigation/RPGMovementGridManager.h"
+#include "EngineUtils.h"
 
 
 bool UMovementGridValidator::CanValidateAsset_Implementation(

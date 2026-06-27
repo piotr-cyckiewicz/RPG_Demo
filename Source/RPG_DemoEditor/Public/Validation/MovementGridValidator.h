@@ -4,9 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "EditorValidatorBase.h"
-#include "GameFramework/GameModeBase.h"
-#include "EngineUtils.h"
-#include "GameplaySystems/Navigation/RPGMovementGridManager.h"
 #include "MovementGridValidator.generated.h"
 
 /**
@@ -27,5 +24,5 @@ class RPG_DEMOEDITOR_API UMovementGridValidator : public UEditorValidatorBase
 
 protected:
 	UPROPERTY(EditAnywhere)
-	TSubclassOf<AGameModeBase> TargetGameModeClass;
+	TSubclassOf<class AGameModeBase> TargetGameModeClass;
 };
