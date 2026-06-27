@@ -15,7 +15,10 @@
 		{
 			"Name": "RPG_DemoEditor",
 			"Type": "Editor",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"DataValidation"
+			]
 		}
 	],
 	"Plugins": [
