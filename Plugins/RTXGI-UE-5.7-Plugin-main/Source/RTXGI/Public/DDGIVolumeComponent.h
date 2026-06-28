@@ -365,7 +365,7 @@ public:
 
 	// Number of probes on each axis.
 	UPROPERTY(EditAnywhere, Category = "GI Probes", meta = (ClampMin = "1"));
-	FIntVector ProbeCounts = FIntVector(8, 8, 8);
+	FIntVector ProbeCounts = FIntVector(2, 2, 2);
 
 	// Maximum distance a probe ray may travel. Shortening this can increase performance. If you shorten it too much, it can miss geometry.
 	UPROPERTY(EditAnywhere, Category = "GI Probes", meta = (ClampMin = "0"));
