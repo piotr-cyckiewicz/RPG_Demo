@@ -24,4 +24,6 @@ class RPG_DEMOEDITOR_API UPlayerStartValidator : public UEditorValidatorBase
 protected:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<AGameModeBase> TargetGameModeClass;
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<class AFunctionalTest> TargetFunctionalTestClass;
 };

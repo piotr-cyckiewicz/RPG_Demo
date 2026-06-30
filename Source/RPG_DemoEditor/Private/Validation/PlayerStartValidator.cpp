@@ -5,6 +5,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/PlayerStart.h"
 #include "GameFramework/GameModeBase.h"
+#include "FunctionalTest.h"
 
 bool UPlayerStartValidator::CanValidateAsset_Implementation(const FAssetData& InAssetData, UObject* InAsset, FDataValidationContext& InContext) const
 {
@@ -20,6 +21,10 @@ EDataValidationResult UPlayerStartValidator::ValidateLoadedAsset_Implementation(
         return EDataValidationResult::NotValidated;
     }
     if (!TargetGameModeClass) {
+        AssetFails(InAsset, FText::FromString("Properties not set in PlayerStartValidator"));
+        return EDataValidationResult::Invalid;
+    }
+    if (!TargetFunctionalTestClass) {
         AssetFails(InAsset, FText::FromString("Properties not set in PlayerStartValidator"));
         return EDataValidationResult::Invalid;
     }
@@ -42,6 +47,22 @@ EDataValidationResult UPlayerStartValidator::ValidateLoadedAsset_Implementation(
     if (Count != 1) {
         AssetFails(InAsset, FText::Format(NSLOCTEXT("Validation", "WrongActorCount",
             "Map has {0} actors of type PlayerStart, expected 1."),
+            FText::AsNumber(Count)));
+        return EDataValidationResult::Invalid;
+    }
+
+    Count = 0;
+    for (TActorIterator<AFunctionalTest> It(World); It; ++It)
+    {
+        if (It->IsA(TargetFunctionalTestClass))
+        {
+            ++Count;
+        }
+    }
+
+    if (Count != 1) {
+        AssetFails(InAsset, FText::Format(NSLOCTEXT("Validation", "WrongActorCount",
+            "Map has {0} actors of type FT_EDITORONLY_LevelDesignChecks, expected 1."),
             FText::AsNumber(Count)));
         return EDataValidationResult::Invalid;
     }
