@@ -1,9 +1,9 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
+#include "GameplaySystems/LevelDesignTools/FOutputNodeCustomization.h"
 #include "GameplaySystems/LevelDesignTools/RPGInputOutputStructures.h"
 #include "GameplaySystems/LevelDesignTools/RPGInputOutputComponent.h"
-#include "GameplaySystems/LevelDesignTools/FOutputNodeCustomization.h"
 #include "Editor/PropertyEditor/Public/DetailWidgetRow.h"
 #include "Editor/PropertyEditor/Public/PropertyHandle.h"
 #include "Editor/PropertyEditor/Public/IDetailChildrenBuilder.h"
@@ -19,17 +19,20 @@ void FOutputNodeCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> Handl
 
 void FOutputNodeCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Handle, IDetailChildrenBuilder& Builder, IPropertyTypeCustomizationUtils&)
 {
+    MainHandle = Handle;
     TargetTypeHandle = Handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FOutputNode, TargetType));
     TargetHandle = Handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FOutputNode, Target));
     TargetInputHandle = Handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FOutputNode, TargetInput));
-    OutputActorHandle = Handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FOutputNode, OutputActor));
 
     TargetTypeHandle->SetOnPropertyValueChanged(
         FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::RefreshTarget));
     RefreshTarget();
 
     TargetHandle->SetOnPropertyValueChanged(
+        FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::CacheTargetIOComp));
+    TargetHandle->SetOnPropertyValueChanged(
         FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::RefreshOptions));
+    CacheTargetIOComp();
     RefreshOptions();
 
     
@@ -46,7 +49,7 @@ void FOutputNodeCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Han
                 .NameContent()[Child->CreatePropertyNameWidget()]
                 .ValueContent().MinDesiredWidth(200.f)
                 [
-                    SNew(SSearchableComboBox)
+                    SAssignNew(TargetInputComboBox, SSearchableComboBox)
                         .OptionsSource(&Options)
                         .OnGenerateWidget_Lambda([](TSharedPtr<FString> In)
                             { return SNew(STextBlock).Text(FText::FromString(*In)); })
@@ -66,15 +69,48 @@ void FOutputNodeCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Han
 
 void FOutputNodeCustomization::RefreshTarget()
 {
-    UObject* TargetTypeObj = nullptr;
-    TargetTypeHandle->GetValue(TargetTypeObj);
-    EIOTargetType TargetType = *CastChecked<EIOTargetType>(TargetTypeObj);
+    uint8 RawTargetType = 0;
+    if (TargetTypeHandle->GetValue(RawTargetType) != FPropertyAccess::Result::Success) {
+        return;
+    }
+    EIOTargetType TargetType = static_cast<EIOTargetType>(RawTargetType);
     if (TargetType == EIOTargetType::Activator) {
         TargetHandle->SetValue((AActor*)nullptr);
     }
     else if (TargetType == EIOTargetType::Self) {
-        UObject* OutputActor; OutputActorHandle->GetValue(OutputActor);
-        TargetHandle->SetValue(CastChecked<AActor>(OutputActor));
+        TArray<UObject*> Objects;
+        TargetHandle->GetOuterObjects(Objects);
+        for (UObject* Obj : Objects) {
+            URPGInputOutputComponent* IOComp = Cast<URPGInputOutputComponent>(Obj);
+            if (IOComp) {
+                int32 index = MainHandle->GetIndexInArray();
+                IOComp->UpdateOutputActor(index);
+                break;
+            }
+        }
+    }
+}
+
+void FOutputNodeCustomization::CacheTargetIOComp()
+{
+    UObject* TargetObj = nullptr;
+    TargetHandle->GetValue(TargetObj);
+    AActor* Actor = Cast<AActor>(TargetObj);
+
+    if (IsValid(Actor)) {
+        URPGInputOutputComponent* TargetIOComp = Actor->GetComponentByClass<URPGInputOutputComponent>();
+        if (TargetIOComp) {
+            TArray<UObject*> Objects;
+            TargetHandle->GetOuterObjects(Objects);
+            for (UObject* Obj : Objects) {
+                URPGInputOutputComponent* IOComp = Cast<URPGInputOutputComponent>(Obj);
+                if (IOComp) {
+                    int32 index = MainHandle->GetIndexInArray();
+                    IOComp->OutputNodes[index].TargetIOComp = TargetIOComp;
+                    break;
+                }
+            }
+        }
     }
 }
 
@@ -82,17 +118,43 @@ void FOutputNodeCustomization::RefreshOptions()
 {
     Options.Reset();
     UObject* TargetObj = nullptr;
-    UObject* TargetTypeObj = nullptr;
+    uint8 RawTargetType = 0;
     TargetHandle->GetValue(TargetObj);
-    TargetTypeHandle->GetValue(TargetTypeObj);
+    if (TargetTypeHandle->GetValue(RawTargetType) != FPropertyAccess::Result::Success) {
+        return;
+    }
+
+
     AActor* Actor = Cast<AActor>(TargetObj);
-    EIOTargetType TargetType = *CastChecked<EIOTargetType>(TargetTypeObj);
-    if (Actor && TargetType != EIOTargetType::Activator)
-        for (const FName& In : URPGInputOutputComponent::GetActorInputs(Actor))
+
+    EIOTargetType TargetType = static_cast<EIOTargetType>(RawTargetType);
+    if (Actor && TargetType != EIOTargetType::Activator) {
+        UE_LOG(LogTemp, Display, TEXT("RefreshOptions Check 3"));
+        for (const FName& In : URPGInputOutputComponent::GetActorInputs(Actor)) {
             Options.Add(MakeShared<FString>(In.ToString()));
-    else if(TargetType == EIOTargetType::Activator)
+        }
+    }
+        
+    else if (TargetType == EIOTargetType::Activator) {
         for (const FName& In : URPGInputOutputComponent::GetAllActorInputs())
             Options.Add(MakeShared<FString>(In.ToString()));
+    }
+
+
+    if (TargetInputComboBox) {
+        TargetInputComboBox->RefreshOptions();
+        FString inpt = GetCurrentInputText().ToString();
+        bool inptFound = false;
+        for (TSharedPtr<FString> option : Options) {
+            if (option->Equals(inpt)) {
+                inptFound = true;
+                break;
+            }
+        }
+        if (!inptFound) {
+            TargetInputHandle->SetValue(FName("<none>"));
+        }
+    }
 }
 
 void FOutputNodeCustomization::OnInputPicked(TSharedPtr<FString> Item, ESelectInfo::Type)
@@ -103,6 +165,7 @@ void FOutputNodeCustomization::OnInputPicked(TSharedPtr<FString> Item, ESelectIn
 
 FText FOutputNodeCustomization::GetCurrentInputText() const
 {
-    FName Cur; TargetInputHandle->GetValue(Cur);
-    return FText::FromString(Cur.IsNone() ? TEXT("<none>") : Cur.ToString());
+    FString Cur; TargetInputHandle->GetValue(Cur);
+    FName CurName = FName(Cur);
+    return FText::FromString(CurName.IsNone() ? TEXT("<none>") : CurName.ToString());
 }

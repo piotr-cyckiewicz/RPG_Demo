@@ -23,10 +23,13 @@ public:
 
 private:
 	void RefreshTarget();
+	void CacheTargetIOComp();
 	void RefreshOptions();
 	void OnInputPicked(TSharedPtr<FString> Item, ESelectInfo::Type);
 	FText GetCurrentInputText() const;
 
-	TSharedPtr<IPropertyHandle> OutputActorHandle, TargetTypeHandle, TargetHandle, TargetInputHandle;
+
+	TSharedPtr<IPropertyHandle> MainHandle, TargetTypeHandle, TargetHandle, TargetInputHandle;
+	TSharedPtr<class SSearchableComboBox> TargetInputComboBox;
 	TArray<TSharedPtr<FString>> Options;
 };

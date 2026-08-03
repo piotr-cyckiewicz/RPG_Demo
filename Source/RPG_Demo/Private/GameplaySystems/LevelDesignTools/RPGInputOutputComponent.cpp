@@ -3,12 +3,14 @@
 
 #include "GameplaySystems/LevelDesignTools/RPGInputOutputComponent.h"
 #include "GameplaySystems/LevelDesignTools/RPGInputOutputStructures.h"
+#include "Engine/SCS_Node.h"
 
 #if WITH_EDITOR
 #include "AssetRegistry/AssetRegistryModule.h"
 #endif
 
-// Sets default values for this component's properties
+
+
 URPGInputOutputComponent::URPGInputOutputComponent()
 {
 	// Set this component to be initialized when the game starts, and to be ticked every frame.  You can turn these features
@@ -19,36 +21,36 @@ URPGInputOutputComponent::URPGInputOutputComponent()
 }
 
 
-// Called when the game starts
 void URPGInputOutputComponent::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
+	if(OutputNodes.Num() > 0)
+		GEngine->AddOnScreenDebugMessage(1, 5, FColor::Blue, (IsValid(OutputNodes[0].Target)) ? FString(TEXT("True")) : FString(TEXT("False")));
 	
 }
 
 TArray<FName> URPGInputOutputComponent::GetActorInputs(AActor* Actor)
 {
 	TArray<FName> Inputs;
-
-	for (const FImplementedInterface& Interface : Actor->GetClass()->Interfaces) {
-		if (!Interface.bImplementedByK2) {
-			continue;
-		}
-		
-		FString Name = Interface.Class.GetName();
-		if (!Name.StartsWith(IOInterfacesPrefix, ESearchCase::CaseSensitive)) {
-			continue;
-		}
-
-		for (TFieldIterator<UFunction> It(Interface.Class); It; ++It)
-		{
-			UFunction* Function = *It;
-			Inputs.Add(*Function->GetName());
-		}
+	
+	if (!IsValid(Actor)) {
+		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputComponent - GetActorInputs - No valid actor"));
+		return Inputs;
 	}
-	TArray<FName> Inputs;
+
+	auto* TargetIO = Actor->GetComponentByClass<URPGInputOutputComponent>();
+	if (!TargetIO) {
+		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputComponent - GetActorInputs - No InputOutputComponent found"));
+		return Inputs;
+	}
+
+	TargetIO->InputList;
+
+	for (auto InputRow : TargetIO->InputList) {
+		Inputs.Add(FName(*InputRow.InputName));
+	}
+	return Inputs;
 }
 
 #if WITH_EDITOR
@@ -71,27 +73,106 @@ TArray<FName> URPGInputOutputComponent::GetAllActorInputs()
 	{
 		FString BlueprintType;
 		if (Asset.GetTagValue(FBlueprintTags::BlueprintType, BlueprintType)
-			&& BlueprintType == TEXT("BPTYPE_Interface") && Asset.AssetName.ToString() == IOInterfacesPrefix)
+			&& (BlueprintType == TEXT("BPTYPE_NORMAL") || BlueprintType == TEXT("BPTYPE_Normal")))
 		{
 			FString ClassPath;
 			Asset.GetTagValue(FBlueprintTags::GeneratedClassPath, ClassPath);
 			FString ObjectPath = FPackageName::ExportTextPathToObjectPath(ClassPath);
-			UClass* InterfaceClass = LoadObject<UClass>(nullptr, *ObjectPath);
-			for (TFieldIterator<UFunction> It(InterfaceClass); It; ++It)
+			UClass* ObjectClass = LoadObject<UClass>(nullptr, *ObjectPath);
+			if (!IsValid(ObjectClass)) continue;
+			UBlueprintGeneratedClass* BPGC = Cast<UBlueprintGeneratedClass>(ObjectClass);
+			if (BPGC && BPGC->SimpleConstructionScript)
 			{
-				UFunction* Function = *It;
-				Inputs.Add(*Function->GetName());
+				for (USCS_Node* Node : BPGC->SimpleConstructionScript->GetAllNodes())
+				{
+					if (auto* IOComp = Cast<URPGInputOutputComponent>(Node->ComponentTemplate))
+					{
+						for (auto InputRow : IOComp->InputList) {
+							Inputs.AddUnique(FName(*InputRow.InputName));
+						}
+					}
+				}
 			}
 		}
 	}
 
-	//TODO: Get all function names from 
+	return Inputs;
+}
+void URPGInputOutputComponent::UpdateOutputActor(int32 OutputNodeIndex)
+{
+	OutputNodes[OutputNodeIndex].OutputActor = GetOwner();
 }
 #endif
+void URPGInputOutputComponent::FireOutput(FString OutputName)
+{
+	UE_LOG(LogTemp, Display, TEXT(""));
+	int32 OldSize = OutputNodesToProcess.Num();
+	for (int32 i = 0; i < OutputNodes.Num(); i++) {
+		if (OutputNodes[i].OutputType == OutputName) {
+			OutputNodesToProcess.Add(i);
+			OutputNodesToProcessDelay.Add(OutputNodes[i].Delay);
+		}
+	}
+	for (int32 i = OldSize; i < OutputNodesToProcess.Num(); i++) {
+		if (OutputNodesToProcessDelay[i] <= 0) {
+			ProcessOutputNode(i);
+		}
+	}
+}
+
+void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName, TArray<FIOParameter> IOParamaters)
+{
+	if (!IsValid(OutputActor)) {
+		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputComponent - FireInput - OutputActor is invalid"));
+		return;
+	}
+	TArray<FInputParameter> InputParameters = TArray<FInputParameter>();
+	for (FIOParameter& param : IOParamaters) {
+		InputParameters.Add(FInputParameter(param));
+	}
+
+	if (InputName.Equals(FString(TEXT("Disable")))) {
+		GEngine->AddOnScreenDebugMessage(0, 5, FColor::Black, FString(TEXT("Checkkk2")));
+	}
+}
 
 #if WITH_EDITOR
+void URPGInputOutputComponent::ProcessOutputNode(int32 index)
+{
+	if (OutputNodesToProcessDelay[index] > 0) {
+		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - Node Delay is above 0"));
+		return;
+	}
+	int32 indexNode = OutputNodesToProcess[index];
+
+	if (OutputNodes[indexNode].MaxFireCount != -1 && OutputNodes[indexNode].FireCount >= OutputNodes[indexNode].MaxFireCount) {
+		return;
+	}
+	if (!IsValid(OutputNodes[indexNode].OutputActor)) {
+		OutputNodes[indexNode].OutputActor = GetOwner();
+	}
+	if (!IsValid(OutputNodes[indexNode].Target)) {
+		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - Target is not valid"));
+		return;
+	}
+	if (OutputNodes[indexNode].TargetInput.IsEmpty() || OutputNodes[indexNode].TargetInput.ToLower().Equals(TEXT("<none>"))) {
+		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetInput is not set"));
+		return;
+	}
+	if (!IsValid(OutputNodes[indexNode].TargetIOComp)) {
+		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetIOComp is invalid"));
+		return;
+	}
+
+	OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor, OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
+
+	OutputNodesToProcess.RemoveAt(index);
+	OutputNodesToProcessDelay.RemoveAt(index);
+
+}
 void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
 {
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
 	if (PropertyChangedEvent.PropertyChain.GetActiveMemberNode() == nullptr
 		|| PropertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue() == nullptr)
 		return;
@@ -115,6 +196,7 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 	// We have to make sure that vaid output always has proper OutputActor set
 	OutputNodes[Index].OutputActor = GetOwner();
 
+	// If no actor is set, we rteset input apramaters and return early
 	if (OutputNodes[Index].TargetType == EIOTargetType::Actor && !IsValid(OutputNodes[Index].Target)) {
 		OutputNodes[Index].InputParameters.Reset();
 		return;
@@ -126,23 +208,28 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 		return;
 	}
 
-	UFunction* Function = OutputNodes[Index].Target->FindFunction(FName(*TargetInput));
-	if (!Function) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No function matching TargetInput was found"));
+	auto* IOComp = OutputNodes[Index].Target->GetComponentByClass<URPGInputOutputComponent>();
+	if (!IsValid(IOComp)) {
+		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No InputOutputComponent found despite Target being valid"));
+		return;
+	}
+
+	int index = -1;
+	for (int i = 0; i < IOComp->InputList.Num(); i++) {
+		if (IOComp->InputList[i].InputName == TargetInput) {
+			index = i;
+			break;
+		}
+	}
+
+	if (index == -1) {
+		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No input matching TargetInput was found"));
 		return;
 	}
 	
 	OutputNodes[Index].InputParameters.Reset();
-
-	for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
-	{
-		FProperty* Param = *It;
-
-		if (Param->HasAnyPropertyFlags(CPF_ReturnParm) || Param->HasAnyPropertyFlags(CPF_OutParm))
-			continue;
-
-		OutputNodes[Index].InputParameters.Add(FIOParameter(Param));
-	
+	for (auto Parameter : IOComp->InputList[index].Parameters) {
+		OutputNodes[Index].InputParameters.Add(FIOParameter(Parameter));
 	}
 }
 #endif
@@ -153,7 +240,32 @@ TArray<FString> URPGInputOutputComponent::GetOutputOptions() const
 	return OutputList;
 }
 
+TArray<FString> URPGInputOutputComponent::GetOutputOptionsWithNoneOption() const
+{
+	TArray<FString> result = GetOutputOptions();
+	result.Insert(FString(TEXT("<none>")), 0);
+	return result;
+}
+
 TArray<FString> URPGInputOutputComponent::GetInputOptions() const
 {
+	TArray<FString> result;
+	
+	for (FInputNode node : InputList) {
+		result.Add(node.InputName);
+	}
+
 	return TArray<FString>();
+}
+
+TArray<FInputNode> URPGInputOutputComponent::GetInputNodes() const
+{
+	return InputList;
+}
+
+TArray<FString> URPGInputOutputComponent::GetInputOptionsWithNoneOption() const
+{
+	TArray<FString> result = GetInputOptions();
+	result.Insert(FString(TEXT("<none>")), 0);
+	return result;
 }
