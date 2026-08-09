@@ -27,6 +27,8 @@ public:
     virtual FText GetNodeTitle(ENodeTitleType::Type) const override;
     virtual FText GetMenuCategory() const override;
     virtual bool IsNodePure() const override { return false; } // We need out exec pin
+    FEdGraphPinType ParamsArrayPinType() const;
+    FName GetterNameForType(EIOParamType ParamType);
 
     virtual void PostEditChangeProperty(FPropertyChangedEvent& E) override; // Node reconstruciton after changing SelectedInputName
 
