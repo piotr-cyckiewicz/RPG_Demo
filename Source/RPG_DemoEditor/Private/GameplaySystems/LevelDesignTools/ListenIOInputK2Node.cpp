@@ -37,7 +37,8 @@ void UListenIOInputK2Node::ExpandNode(FKismetCompilerContext& C, UEdGraph* Graph
 	// CustomEvent that FireInput should find
 	UK2Node_CustomEvent* Event =
 		C.SpawnIntermediateNode<UK2Node_CustomEvent>(this, Graph);
-	Event->CustomFunctionName = SelectedInputName;
+	FString FuncName = FString(TEXT("IO_")); FuncName.Append(SelectedInputName.ToString()); 
+	Event->CustomFunctionName = FName(*FuncName);
 	Event->CreateUserDefinedPin(TEXT("Params"),
 		ParamsArrayPinType(), EGPD_Output, false);
 	Event->AllocateDefaultPins();
@@ -80,12 +81,12 @@ void UListenIOInputK2Node::GetMenuActions(FBlueprintActionDatabaseRegistrar& R) 
 
 FText UListenIOInputK2Node::GetNodeTitle(ENodeTitleType::Type) const
 {
-	return FText();
+	return NSLOCTEXT("IO", "ListenIOInputTitle", "Listen IO Input");
 }
 
 FText UListenIOInputK2Node::GetMenuCategory() const
 {
-	return FText();
+	return NSLOCTEXT("IO", "IOCategory", "IO System");
 }
 
 FEdGraphPinType UListenIOInputK2Node::ParamsArrayPinType() const
@@ -99,8 +100,14 @@ FEdGraphPinType UListenIOInputK2Node::ParamsArrayPinType() const
 
 FName UListenIOInputK2Node::GetterNameForType(EIOParamType ParamType)
 {
-	if(ParamType == EIOParamType::Bool)
-		//TODO: Finish this func
+	if (ParamType == EIOParamType::Bool) return FName(TEXT("GetBoolParam"));
+	else if (ParamType == EIOParamType::Int) return FName(TEXT("GetIntParam"));
+	else if (ParamType == EIOParamType::Float) return FName(TEXT("GetFloatParam"));
+	else if (ParamType == EIOParamType::String) return FName(TEXT("GetStringParam"));
+	else if (ParamType == EIOParamType::Vector) return FName(TEXT("GetVectorParam"));
+	else if (ParamType == EIOParamType::Actor) return FName(TEXT("GetActorParam"));
+	else UE_LOG(LogTemp, Error, TEXT("ListenIOInputK2Node - GetterNameForType - Unsupported param type"));
+	return FName();
 }
 
 void UListenIOInputK2Node::PostEditChangeProperty(FPropertyChangedEvent& E)

@@ -19,7 +19,7 @@ class RPG_DEMOEDITOR_API UListenIOInputK2Node : public UK2Node
 	
 public:
     UPROPERTY()
-    FName SelectedInputName;
+    FName SelectedInputName = FName(TEXT("Disable"));
 
     virtual void AllocateDefaultPins() override; // Allocation of exec pin and parameter pins
     virtual void ExpandNode(FKismetCompilerContext& C, UEdGraph* Graph) override;

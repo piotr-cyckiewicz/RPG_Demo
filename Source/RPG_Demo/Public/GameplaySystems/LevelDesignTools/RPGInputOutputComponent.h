@@ -20,6 +20,7 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:	
 	// Sets OutputActor in specified OutputNode to owner of this component
@@ -76,4 +77,8 @@ public:
 	UFUNCTION()
 	static TArray<FName> GetAllActorInputs();
 #endif
+
+private:
+	UFUNCTION()
+	FString OutputNodeToString(FOutputNode& Node) const;
 };
