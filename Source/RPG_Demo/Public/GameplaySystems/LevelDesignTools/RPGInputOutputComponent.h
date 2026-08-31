@@ -67,8 +67,6 @@ public:
 	UFUNCTION()
 	TArray<FString> GetInputOptions() const;
 	UFUNCTION()
-	TArray<FInputNode> GetInputNodes() const;
-	UFUNCTION()
 	TArray<FString> GetInputOptionsWithNoneOption() const;
 	UFUNCTION()
 	static TArray<FName> GetActorInputs(AActor* Actor);

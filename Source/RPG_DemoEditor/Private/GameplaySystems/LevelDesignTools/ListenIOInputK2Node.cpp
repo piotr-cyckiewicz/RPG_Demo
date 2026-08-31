@@ -136,14 +136,6 @@ FInputNode* UListenIOInputK2Node::FindInputNode(FName Name)
 	const URPGInputOutputComponent* Comp = GetTemplateComponent();
 	if (!Comp)
 		return nullptr;
-
-	auto Inputs = Comp->GetInputNodes();
-	for (int32 i = 0; i < Inputs.Num(); i++) {
-		if (Inputs[i].InputName.Equals(Name.ToString())) {
-			return &Inputs[i];
-		}
-	}
-
 	return nullptr;
 }
 

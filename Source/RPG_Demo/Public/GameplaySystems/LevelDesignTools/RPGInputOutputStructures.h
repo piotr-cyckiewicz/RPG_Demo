@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/SCS_Node.h"
 #include "RPGInputOutputStructures.generated.h"
 
 struct FInputParameter;
@@ -54,6 +55,16 @@ struct FIOParameter
 	FIOParameter(FString ParamName, AActor* ActorValue) { this->ParamName = ParamName; ParamType = EIOParamType::Actor; this->ActorValue = ActorValue; }
 
 	FIOParameter(FInputParameter Parameter);
+
+	FIOParameter(FProperty* Property) {
+		this->ParamName = Property->GetName();
+		if (Property->GetCPPType() == FString(TEXT("bool"))) ParamType = EIOParamType::Bool;
+		else if (Property->GetCPPType() == FString(TEXT("int32"))) ParamType = EIOParamType::Int;
+		else if (Property->GetCPPType() == FString(TEXT("double"))) ParamType = EIOParamType::Float;
+		else if (Property->GetCPPType() == FString(TEXT("FString"))) ParamType = EIOParamType::String;
+		else if (Property->GetCPPType() == FString(TEXT("FVector"))) ParamType = EIOParamType::Vector;
+		else if (Property->GetCPPType() == FString(TEXT("AActor*"))) ParamType = EIOParamType::Actor;
+	}
 };
 
 

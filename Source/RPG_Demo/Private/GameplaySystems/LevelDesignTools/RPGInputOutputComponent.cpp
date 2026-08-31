@@ -38,6 +38,18 @@ URPGInputOutputComponent::URPGInputOutputComponent()
 void URPGInputOutputComponent::BeginPlay()
 {
 	Super::BeginPlay();
+	for (int i = 0; i < OutputNodes.Num(); i++) {
+		if (!IsValid(OutputNodes[i].Target)) {
+			UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - Target at index %d is invalid"), i);
+			continue;
+		}
+		URPGInputOutputComponent* IOComp = OutputNodes[i].Target->GetComponentByClass<URPGInputOutputComponent>();
+		if (!IsValid(IOComp)) {
+			UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - TargetIOComp at index %d is invalid"), i);
+			continue;
+		}
+		OutputNodes[i].TargetIOComp = IOComp;
+	}
 }
 
 void URPGInputOutputComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -69,10 +81,10 @@ TArray<FName> URPGInputOutputComponent::GetActorInputs(AActor* Actor)
 		return Inputs;
 	}
 
-	TargetIO->InputList;
+	auto InputsFString = TargetIO->GetInputOptions();
 
-	for (auto InputRow : TargetIO->InputList) {
-		Inputs.Add(FName(*InputRow.InputName));
+	for (auto InputRow : InputsFString) {
+		Inputs.Add(FName(*InputRow));
 	}
 	return Inputs;
 }
@@ -111,8 +123,8 @@ TArray<FName> URPGInputOutputComponent::GetAllActorInputs()
 				{
 					if (auto* IOComp = Cast<URPGInputOutputComponent>(Node->ComponentTemplate))
 					{
-						for (auto InputRow : IOComp->InputList) {
-							Inputs.AddUnique(FName(*InputRow.InputName));
+						for (auto InputRow : IOComp->GetInputOptions()) {
+							Inputs.AddUnique(FName(*InputRow));
 						}
 					}
 				}
@@ -275,22 +287,34 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 		return;
 	}
 
-	int index = -1;
-	for (int i = 0; i < IOComp->InputList.Num(); i++) {
-		if (IOComp->InputList[i].InputName == TargetInput) {
-			index = i;
+	auto TargetInputWithPrefix = FString(TEXT("IO_")).Append(TargetInput);
+	UFunction* Func = nullptr;
+	for (TFieldIterator<UFunction> It(OutputNodes[Index].Target->GetClass()); It; ++It)
+	{
+		Func = *It;
+		if (Func->GetName() == TargetInputWithPrefix)
+		{
 			break;
 		}
 	}
 
-	if (index == -1) {
+	if (Func == nullptr) {
 		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No input matching TargetInput was found"));
 		return;
 	}
-	
+
+	UE_LOG(LogTemp, Display, TEXT("Reseting InputParameters"));
 	OutputNodes[Index].InputParameters.Reset();
-	for (auto Parameter : IOComp->InputList[index].Parameters) {
-		OutputNodes[Index].InputParameters.Add(FIOParameter(Parameter));
+	for (TFieldIterator<FProperty> It(Func); It; ++It)
+	{
+		FProperty* Property = *It;
+		if (!Property->HasAnyPropertyFlags(CPF_Parm)) continue;
+
+		if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
+
+		OutputNodes[Index].InputParameters.Add(FIOParameter(Property));
+
+		UE_LOG(LogTemp, Display, TEXT("Adding InputParameters"));
 	}
 }
 #endif
@@ -310,18 +334,18 @@ TArray<FString> URPGInputOutputComponent::GetOutputOptionsWithNoneOption() const
 
 TArray<FString> URPGInputOutputComponent::GetInputOptions() const
 {
-	TArray<FString> result;
-	
-	for (FInputNode node : InputList) {
-		result.Add(node.InputName);
+	TArray<FString> Result;
+	AActor* Actor = GetOwner();
+
+	for (TFieldIterator<UFunction> It(Actor->GetClass()); It; ++It)
+	{
+		UFunction* Func = *It;
+		if (Func->GetName().StartsWith(TEXT("IO_")))
+		{
+			Result.Add(Func->GetName().RightChop(3));
+		}
 	}
-
-	return TArray<FString>();
-}
-
-TArray<FInputNode> URPGInputOutputComponent::GetInputNodes() const
-{
-	return InputList;
+	return Result;
 }
 
 TArray<FString> URPGInputOutputComponent::GetInputOptionsWithNoneOption() const
