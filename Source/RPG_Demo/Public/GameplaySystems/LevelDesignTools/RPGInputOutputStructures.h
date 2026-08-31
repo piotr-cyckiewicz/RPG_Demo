@@ -19,7 +19,7 @@ struct FIOParameter
 	UPROPERTY(VisibleInstanceOnly)
 	FString ParamName = FString(TEXT(""));
 
-	UPROPERTY()
+	UPROPERTY(VisibleInstanceOnly)
 	EIOParamType ParamType = EIOParamType::None;
 
 	UPROPERTY(EditInstanceOnly,
@@ -64,6 +64,7 @@ struct FIOParameter
 		else if (Property->GetCPPType() == FString(TEXT("FString"))) ParamType = EIOParamType::String;
 		else if (Property->GetCPPType() == FString(TEXT("FVector"))) ParamType = EIOParamType::Vector;
 		else if (Property->GetCPPType() == FString(TEXT("AActor*"))) ParamType = EIOParamType::Actor;
+		else UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - FIOParameter(FProperty* Property) - Unsupported type of property"));
 	}
 };
 
@@ -149,7 +150,7 @@ struct RPG_DEMO_API FOutputNode
 
 	UPROPERTY(EditInstanceOnly)
 	FString TargetInput;
-	UPROPERTY(EditInstanceOnly)
+	UPROPERTY(EditInstanceOnly, EditFixedSize)
 	TArray<FIOParameter> InputParameters;
 	UPROPERTY(EditInstanceOnly, meta = (ClampMin = 0))
 	float Delay = 0;

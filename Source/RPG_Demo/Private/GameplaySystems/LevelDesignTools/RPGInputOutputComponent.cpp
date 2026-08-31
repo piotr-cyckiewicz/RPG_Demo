@@ -202,7 +202,6 @@ void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName,
 	GetOwner()->ProcessEvent(Func, &P);
 }
 
-#if WITH_EDITOR
 void URPGInputOutputComponent::ProcessOutputNode(int32 index)
 {
 	if (OutputNodesToProcessDelay[index] > 0) {
@@ -234,35 +233,45 @@ void URPGInputOutputComponent::ProcessOutputNode(int32 index)
 		return;
 	}
 
-	// Remove the noces before firing input, as it might conflict with save system
+	// Remove the nodes before firing input, as it might conflict with save system
 	// (for example we may fire Save Input that will save the state of OutputNodesToProcess, and we'll have unnecessary Save after loading the game)
 
 	OutputNodesToProcess.RemoveAt(index);
 	OutputNodesToProcessDelay.RemoveAt(index);
+	OutputNodes[indexNode].FireCount++;
 
 	OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor, OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
 
 }
+
+#if WITH_EDITOR
 void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent)
 {
-	Super::PostEditChangeChainProperty(PropertyChangedEvent);
 	if (PropertyChangedEvent.PropertyChain.GetActiveMemberNode() == nullptr
-		|| PropertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue() == nullptr)
+		|| PropertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue() == nullptr) {
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
-	if (PropertyChangedEvent.Property == nullptr)
+	}
+		
+	if (PropertyChangedEvent.Property == nullptr) {
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
+	}
 
 	FName MemberName = PropertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue()->GetFName();
 	FName PropertyName = PropertyChangedEvent.Property->GetFName();
 
 	if (MemberName != GET_MEMBER_NAME_CHECKED(URPGInputOutputComponent, OutputNodes)
-		|| PropertyName != GET_MEMBER_NAME_CHECKED(FOutputNode, TargetInput))
+		|| PropertyName != GET_MEMBER_NAME_CHECKED(FOutputNode, TargetInput)) {
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
+	}
 
 	int32 Index = PropertyChangedEvent.GetArrayIndex(TEXT("OutputNodes"));
 
 	if (!OutputNodes.IsValidIndex(Index)) {
 		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - Improper index detected"));
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
 
@@ -272,50 +281,49 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 	// If no actor is set, we rteset input apramaters and return early
 	if (OutputNodes[Index].TargetType == EIOTargetType::Actor && !IsValid(OutputNodes[Index].Target)) {
 		OutputNodes[Index].InputParameters.Reset();
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
 
 	const FString& TargetInput = OutputNodes[Index].TargetInput;
+	if (TargetInput.IsEmpty() || TargetInput.Equals(TEXT("<none>"), ESearchCase::IgnoreCase)) {
+		OutputNodes[Index].InputParameters.Reset();
+		return;
+	}
+
 	if (OutputNodes[Index].TargetType != EIOTargetType::Activator && OutputNodes[Index].Target == nullptr) {
 		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No Target set despite changing TargetInput"));
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
 
 	auto* IOComp = OutputNodes[Index].Target->GetComponentByClass<URPGInputOutputComponent>();
 	if (!IsValid(IOComp)) {
 		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No InputOutputComponent found despite Target being valid"));
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
 
 	auto TargetInputWithPrefix = FString(TEXT("IO_")).Append(TargetInput);
-	UFunction* Func = nullptr;
-	for (TFieldIterator<UFunction> It(OutputNodes[Index].Target->GetClass()); It; ++It)
-	{
-		Func = *It;
-		if (Func->GetName() == TargetInputWithPrefix)
-		{
-			break;
-		}
-	}
+	UFunction* Func = OutputNodes[Index].Target->FindFunction(FName(*TargetInputWithPrefix));
 
 	if (Func == nullptr) {
 		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No input matching TargetInput was found"));
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
 
-	UE_LOG(LogTemp, Display, TEXT("Reseting InputParameters"));
 	OutputNodes[Index].InputParameters.Reset();
 	for (TFieldIterator<FProperty> It(Func); It; ++It)
 	{
 		FProperty* Property = *It;
 		if (!Property->HasAnyPropertyFlags(CPF_Parm)) continue;
-
 		if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
 
 		OutputNodes[Index].InputParameters.Add(FIOParameter(Property));
-
-		UE_LOG(LogTemp, Display, TEXT("Adding InputParameters"));
 	}
+
+	Super::PostEditChangeChainProperty(PropertyChangedEvent);
 }
 #endif
 
