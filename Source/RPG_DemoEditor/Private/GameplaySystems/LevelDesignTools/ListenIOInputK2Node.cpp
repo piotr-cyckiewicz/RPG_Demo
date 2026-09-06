@@ -74,19 +74,17 @@ void UListenIOInputK2Node::ExpandNode(FKismetCompilerContext& C, UEdGraph* Graph
 
 void UListenIOInputK2Node::GetMenuActions(FBlueprintActionDatabaseRegistrar& R) const
 {
-	UClass* Key = GetClass();
-	if (R.IsOpenForRegistration(Key))
-		R.AddBlueprintAction(Key, UBlueprintNodeSpawner::Create(Key));
+	
 }
 
 FText UListenIOInputK2Node::GetNodeTitle(ENodeTitleType::Type) const
 {
-	return NSLOCTEXT("IO", "ListenIOInputTitle", "Listen IO Input");
+	return FText();
 }
 
 FText UListenIOInputK2Node::GetMenuCategory() const
 {
-	return NSLOCTEXT("IO", "IOCategory", "IO System");
+	return FText();
 }
 
 FEdGraphPinType UListenIOInputK2Node::ParamsArrayPinType() const

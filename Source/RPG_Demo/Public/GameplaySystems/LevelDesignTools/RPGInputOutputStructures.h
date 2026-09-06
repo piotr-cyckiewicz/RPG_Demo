@@ -150,7 +150,7 @@ struct RPG_DEMO_API FOutputNode
 
 	UPROPERTY(EditInstanceOnly)
 	FString TargetInput;
-	UPROPERTY(EditInstanceOnly, EditFixedSize)
+	UPROPERTY(EditInstanceOnly, EditFixedSize, meta = (TitleProperty = "ParamName"))
 	TArray<FIOParameter> InputParameters;
 	UPROPERTY(EditInstanceOnly, meta = (ClampMin = 0))
 	float Delay = 0;
