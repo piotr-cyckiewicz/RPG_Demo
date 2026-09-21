@@ -136,6 +136,9 @@ struct RPG_DEMO_API FOutputNode
 	UPROPERTY()
 	TObjectPtr<AActor> OutputActor;
 
+	UPROPERTY()
+	TObjectPtr<AActor> Activator;
+
 	UPROPERTY(EditInstanceOnly, meta = (GetOptions = "GetOutputOptionsWithNoneOption"))
 	FString OutputType;
 

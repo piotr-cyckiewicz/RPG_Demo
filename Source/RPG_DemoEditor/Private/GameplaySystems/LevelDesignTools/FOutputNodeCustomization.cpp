@@ -83,6 +83,7 @@ void FOutputNodeCustomization::RefreshTarget()
         for (UObject* Obj : Objects) {
             URPGInputOutputComponent* IOComp = Cast<URPGInputOutputComponent>(Obj);
             if (IOComp) {
+                TargetHandle->SetValue(IOComp->GetOwner());
                 int32 index = MainHandle->GetIndexInArray();
                 IOComp->UpdateOutputActor(index);
                 break;
