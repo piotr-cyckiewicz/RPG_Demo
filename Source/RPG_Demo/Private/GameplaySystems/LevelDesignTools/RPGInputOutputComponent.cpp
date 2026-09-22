@@ -186,7 +186,7 @@ void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 				OutputNodes[i].Activator = Activator;
 				OutputNodesToProcess.Add(i);
 				OutputNodesToProcessDelay.Add(OutputNodes[i].Delay);
-				OutputNodesToProcessActivators.Add(Activator)
+				OutputNodesToProcessActivators.Add(Activator);
 			}
 			#if !UE_BUILD_SHIPPING
 			else if(CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0) {
@@ -385,6 +385,8 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 
 	OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor,
 		OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
+
+	return true;
 }
 
 #if WITH_EDITOR

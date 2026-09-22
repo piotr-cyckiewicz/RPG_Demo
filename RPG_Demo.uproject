@@ -17,8 +17,7 @@
 			"Type": "Editor",
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
-				"DataValidation",
-				"BlueprintGraph"
+				"DataValidation"
 			]
 		}
 	],

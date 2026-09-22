@@ -3,10 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/SCS_Node.h"
 #include "RPGInputOutputStructures.generated.h"
-
-struct FInputParameter;
 
 UENUM(BlueprintType)
 enum class EIOParamType : uint8 { None, Bool, Int, Float, String, Vector, Actor };
@@ -54,8 +51,6 @@ struct FIOParameter
 	FIOParameter(FString ParamName, FVector VectorValue) { this->ParamName = ParamName; ParamType = EIOParamType::Vector; this->VectorValue = VectorValue; }
 	FIOParameter(FString ParamName, AActor* ActorValue) { this->ParamName = ParamName; ParamType = EIOParamType::Actor; this->ActorValue = ActorValue; }
 
-	FIOParameter(FInputParameter Parameter);
-
 	FIOParameter(FProperty* Property) {
 		this->ParamName = Property->GetName();
 		if (Property->GetCPPType() == FString(TEXT("bool"))) ParamType = EIOParamType::Bool;
@@ -68,57 +63,6 @@ struct FIOParameter
 	}
 };
 
-
-USTRUCT(BlueprintType)
-struct FInputParameter
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditDefaultsOnly)
-	FString ParamName = FString();
-
-	UPROPERTY(EditDefaultsOnly)
-	EIOParamType ParamType = ParamType = EIOParamType::None;
-
-	UPROPERTY(EditDefaultsOnly,
-		meta = (EditCondition = "ParamType == EIOParamType::Bool", EditConditionHides))
-	bool BoolValue = false;
-
-	UPROPERTY(EditDefaultsOnly,
-		meta = (EditCondition = "ParamType == EIOParamType::Int", EditConditionHides))
-	int32 IntValue = 0;
-
-	UPROPERTY(EditDefaultsOnly,
-		meta = (EditCondition = "ParamType == EIOParamType::Float", EditConditionHides))
-	double FloatValue = 0;
-
-	UPROPERTY(EditDefaultsOnly,
-		meta = (EditCondition = "ParamType == EIOParamType::String", EditConditionHides))
-	FString StringValue = FString();
-
-	UPROPERTY(EditDefaultsOnly,
-		meta = (EditCondition = "ParamType == EIOParamType::Vector", EditConditionHides))
-	FVector VectorValue = FVector();
-
-	UPROPERTY(EditDefaultsOnly,
-		meta = (EditCondition = "ParamType == EIOParamType::Actor", EditConditionHides))
-	TObjectPtr<AActor> ActorValue = nullptr;
-
-	FInputParameter(FIOParameter Parameter) {
-		if (Parameter.ParamType == EIOParamType::Bool)			BoolValue = Parameter.BoolValue;
-		else if (Parameter.ParamType == EIOParamType::Int)		IntValue = Parameter.IntValue;
-		else if (Parameter.ParamType == EIOParamType::Float)	FloatValue = Parameter.FloatValue;
-		else if (Parameter.ParamType == EIOParamType::String)	StringValue = Parameter.StringValue;
-		else if (Parameter.ParamType == EIOParamType::Vector)	VectorValue = Parameter.VectorValue;
-		else if (Parameter.ParamType == EIOParamType::Actor)	ActorValue = Parameter.ActorValue;
-		else { UE_LOG(LogTemp, Error, TEXT("No supported property type in FIOParameter detected")); }
-		ParamName = Parameter.ParamName;
-		ParamType = Parameter.ParamType;
-	}
-	FInputParameter() {
-		ParamType = EIOParamType::None;
-	}
-};
 
 UENUM(BlueprintType)
 enum class EIOTargetType : uint8
@@ -168,27 +112,3 @@ struct RPG_DEMO_API FOutputNode
 
 	}
 };
-
-USTRUCT(BlueprintType)
-struct RPG_DEMO_API FInputNode
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditDefaultsOnly)
-	FString InputName;
-
-	UPROPERTY(EditDefaultsOnly)
-	TArray<FInputParameter> Parameters;
-};
-
-inline FIOParameter::FIOParameter(FInputParameter Parameter) {
-	if (Parameter.ParamType == EIOParamType::Bool)			BoolValue = Parameter.BoolValue;
-	else if (Parameter.ParamType == EIOParamType::Int)		IntValue = Parameter.IntValue;
-	else if (Parameter.ParamType == EIOParamType::Float)	FloatValue = Parameter.FloatValue;
-	else if (Parameter.ParamType == EIOParamType::String)	StringValue = Parameter.StringValue;
-	else if (Parameter.ParamType == EIOParamType::Vector)	VectorValue = Parameter.VectorValue;
-	else if (Parameter.ParamType == EIOParamType::Actor)	ActorValue = Parameter.ActorValue;
-	else { UE_LOG(LogTemp, Error, TEXT("No supported property type in FIOParameter detected")); }
-	ParamName = Parameter.ParamName;
-	ParamType = Parameter.ParamType;
-}

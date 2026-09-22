@@ -54,11 +54,7 @@ public:
 protected:
 	UPROPERTY(EditDefaultsOnly, Category = "InputOutputConfiguration")
 	TArray<FString> OutputList;
-	UPROPERTY(EditDefaultsOnly, Category = "InputOutputConfiguration")
-	TArray<struct FInputNode> InputList;
 
-
-	inline static FString IOInterfacesPrefix = TEXT("BPI_IOSystem");
 
 public:
 	UFUNCTION()
