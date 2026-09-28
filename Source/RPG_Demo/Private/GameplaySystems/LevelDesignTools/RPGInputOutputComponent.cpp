@@ -369,7 +369,7 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 		OutputNodesToProcessActivators.RemoveAt(index);
 		return true;
 	}
-	if (OutputNodes[indexNode].TargetType == EIOTargetType::Actor && !IsValid(OutputNodes[indexNode].TargetIOComp)) {
+	if (OutputNodes[indexNode].TargetType != EIOTargetType::Self && !IsValid(OutputNodes[indexNode].TargetIOComp)) {
 		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetIOComp is invalid"));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
@@ -387,12 +387,12 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	OutputNodesToProcessActivators.RemoveAt(index);
 	OutputNodes[indexNode].FireCount++;
 
-	if (OutputNodes[indexNode].TargetType == EIOTargetType::Actor) {
-		OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor,
+	if (OutputNodes[indexNode].TargetType == EIOTargetType::Self) {
+		FireInput(OutputNodes[indexNode].OutputActor,
 			OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
 	}
-	else if (OutputNodes[indexNode].TargetType == EIOTargetType::Self) {
-		FireInput(OutputNodes[indexNode].OutputActor,
+	else {
+		OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor,
 			OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
 	}
 	
