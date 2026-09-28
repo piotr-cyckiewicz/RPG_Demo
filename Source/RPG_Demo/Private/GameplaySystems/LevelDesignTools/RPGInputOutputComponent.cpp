@@ -322,9 +322,11 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	int32 indexNode = OutputNodesToProcess[index];
 
 	if (OutputNodes[indexNode].MaxFireCount != -1 && OutputNodes[indexNode].FireCount >= OutputNodes[indexNode].MaxFireCount) {
+#if !UE_BUILD_SHIPPING
 		if (CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0)
 			UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - ProcessOutputNode - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
 				*OutputNodeToString(OutputNodes[indexNode]), OutputNodes[indexNode].FireCount, OutputNodes[indexNode].MaxFireCount);
+#endif
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
 		OutputNodesToProcessActivators.RemoveAt(index);
@@ -450,6 +452,12 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 			Super::PostEditChangeChainProperty(PropertyChangedEvent);
 			return;
 		}
+	}
+
+	if (OutputNodes[Index].TargetType == EIOTargetType::Activator) {
+		OutputNodes[Index].InputParameters.Reset();
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
+		return;
 	}
 
 	auto TargetInputWithPrefix = FString(TEXT("IO_")).Append(TargetInput);
