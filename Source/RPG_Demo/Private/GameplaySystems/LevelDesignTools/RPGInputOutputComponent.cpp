@@ -39,16 +39,18 @@ void URPGInputOutputComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	for (int i = 0; i < OutputNodes.Num(); i++) {
-		if (!IsValid(OutputNodes[i].Target)) {
-			UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - Target at index %d is invalid"), i);
-			continue;
+		if (OutputNodes[i].TargetType == EIOTargetType::Actor) {
+			if (!IsValid(OutputNodes[i].Target)) {
+				UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - Target at index %d is invalid"), i);
+				continue;
+			}
+			URPGInputOutputComponent* IOComp = OutputNodes[i].Target->GetComponentByClass<URPGInputOutputComponent>();
+			if (!IsValid(IOComp)) {
+				UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - TargetIOComp at index %d is invalid"), i);
+				continue;
+			}
+			OutputNodes[i].TargetIOComp = IOComp;
 		}
-		URPGInputOutputComponent* IOComp = OutputNodes[i].Target->GetComponentByClass<URPGInputOutputComponent>();
-		if (!IsValid(IOComp)) {
-			UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - TargetIOComp at index %d is invalid"), i);
-			continue;
-		}
-		OutputNodes[i].TargetIOComp = IOComp;
 	}
 }
 
@@ -353,7 +355,7 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 		OutputNodes[indexNode].TargetIOComp = OutputNodes[indexNode].Target->GetComponentByClass<URPGInputOutputComponent>();
 	}
 
-	if (!IsValid(OutputNodes[indexNode].Target)) {
+	if (OutputNodes[indexNode].TargetType == EIOTargetType::Actor && !IsValid(OutputNodes[indexNode].Target)) {
 		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - Target is not valid"));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
@@ -367,7 +369,7 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 		OutputNodesToProcessActivators.RemoveAt(index);
 		return true;
 	}
-	if (!IsValid(OutputNodes[indexNode].TargetIOComp)) {
+	if (OutputNodes[indexNode].TargetType == EIOTargetType::Actor && !IsValid(OutputNodes[indexNode].TargetIOComp)) {
 		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetIOComp is invalid"));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
@@ -385,8 +387,15 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	OutputNodesToProcessActivators.RemoveAt(index);
 	OutputNodes[indexNode].FireCount++;
 
-	OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor,
-		OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
+	if (OutputNodes[indexNode].TargetType == EIOTargetType::Actor) {
+		OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor,
+			OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
+	}
+	else if (OutputNodes[indexNode].TargetType == EIOTargetType::Self) {
+		FireInput(OutputNodes[indexNode].OutputActor,
+			OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
+	}
+	
 
 	return true;
 }
@@ -407,6 +416,29 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 
 	FName MemberName = PropertyChangedEvent.PropertyChain.GetActiveMemberNode()->GetValue()->GetFName();
 	FName PropertyName = PropertyChangedEvent.Property->GetFName();
+
+	if (MemberName == GET_MEMBER_NAME_CHECKED(URPGInputOutputComponent, OutputNodes)
+		&& PropertyName == GET_MEMBER_NAME_CHECKED(FOutputNode, TargetType))
+	{
+		int32 Id = PropertyChangedEvent.GetArrayIndex(TEXT("OutputNodes"));
+		if (OutputNodes.IsValidIndex(Id))
+		{
+			FOutputNode& Node = OutputNodes[Id];
+			if (Node.TargetType == EIOTargetType::Self) {
+				Node.Target = GetOwner();
+				Node.TargetIOComp = Node.Target->GetComponentByClass<URPGInputOutputComponent>();
+			}
+			else if (Node.TargetType == EIOTargetType::Activator) {
+				Node.Target = nullptr;
+				Node.TargetIOComp = nullptr;
+
+			}
+			Node.TargetInput = TEXT("<none>");
+			Node.InputParameters.Reset();
+		}
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
+		return;
+	}
 
 	if (MemberName != GET_MEMBER_NAME_CHECKED(URPGInputOutputComponent, OutputNodes)
 		|| PropertyName != GET_MEMBER_NAME_CHECKED(FOutputNode, TargetInput)) {

@@ -25,14 +25,9 @@ void FOutputNodeCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Han
     TargetInputHandle = Handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FOutputNode, TargetInput));
 
     TargetTypeHandle->SetOnPropertyValueChanged(
-        FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::RefreshTarget));
-    RefreshTarget();
-
-    TargetHandle->SetOnPropertyValueChanged(
-        FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::CacheTargetIOComp));
+        FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::RefreshOptions));
     TargetHandle->SetOnPropertyValueChanged(
         FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::RefreshOptions));
-    CacheTargetIOComp();
     RefreshOptions();
 
     
@@ -151,9 +146,6 @@ void FOutputNodeCustomization::RefreshOptions()
                 inptFound = true;
                 break;
             }
-        }
-        if (!inptFound) {
-            TargetInputHandle->SetValue(FName("<none>"));
         }
     }
 }
