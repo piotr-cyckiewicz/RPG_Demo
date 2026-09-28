@@ -8,8 +8,8 @@ public class RPG_DemoTarget : TargetRules
 	public RPG_DemoTarget(TargetInfo Target) : base(Target)
 	{
 		Type = TargetType.Game;
-		DefaultBuildSettings = BuildSettingsVersion.V6;
+		DefaultBuildSettings = BuildSettingsVersion.V7;
 
-		ExtraModuleNames.AddRange( new string[] { "RPG_Demo" } );
+        ExtraModuleNames.AddRange( new string[] { "RPG_Demo" } );
 	}
 }

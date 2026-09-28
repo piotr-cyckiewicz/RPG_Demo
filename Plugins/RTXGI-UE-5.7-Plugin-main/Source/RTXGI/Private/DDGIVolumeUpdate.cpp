@@ -9,6 +9,7 @@
 */
 
 #include "DDGIVolumeUpdate.h"
+#include "Runtime/Launch/Resources/Version.h"
 
 // UE public interfaces
 #include "CoreMinimal.h"
@@ -1802,6 +1803,9 @@ void DebugShaderPlatformsDetailed()
 
 #if !IS_MONOLITHIC
 
+//in 5.8 those functions areexported from Renderer module (RENDERER_API)
+#if ENGINE_MAJOR_VERSION == 5 && ENGINE_MINOR_VERSION < 8
+
 bool FViewInfo::HasRayTracingScene() const
 {
 	check(Family);
@@ -1842,6 +1846,8 @@ FRDGBufferSRVRef FViewInfo::GetRayTracingSceneLayerViewChecked(ERayTracingSceneL
 	checkf(Result, TEXT("Ray tracing scene SRV is expected to be created at this point."));
 	return Result;
 }
+
+#endif
 
 FRDGBufferUAVRef FViewInfo::GetRayTracingInstanceHitCountUAV(FRDGBuilder& GraphBuilder) const
 {

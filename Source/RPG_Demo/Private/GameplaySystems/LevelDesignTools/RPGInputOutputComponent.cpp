@@ -174,7 +174,7 @@ void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 	}
 
 	if (!IsValid(Activator)) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent - FireOutput - Activator not specified"), *OutputName);
+		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent - FireOutput - %s - Activator not specified"), *OutputName);
 		return;
 	}
 
