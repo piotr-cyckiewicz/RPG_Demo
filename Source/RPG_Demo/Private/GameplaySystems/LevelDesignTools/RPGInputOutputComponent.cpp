@@ -4,6 +4,7 @@
 #include "GameplaySystems/LevelDesignTools/RPGInputOutputComponent.h"
 #include "GameplaySystems/LevelDesignTools/RPGInputOutputStructures.h"
 #include "Engine/SCS_Node.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 #if WITH_EDITOR
 #include "AssetRegistry/AssetRegistryModule.h"
@@ -41,12 +42,12 @@ void URPGInputOutputComponent::BeginPlay()
 	for (int i = 0; i < OutputNodes.Num(); i++) {
 		if (OutputNodes[i].TargetType == EIOTargetType::Actor) {
 			if (!IsValid(OutputNodes[i].Target)) {
-				UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - Target at index %d is invalid"), i);
+				UKismetSystemLibrary::PrintString(this, FString(TEXT("URPGInputOutputComponent - BeginPlay - Target at index %d is invalid"), i));
 				continue;
 			}
 			URPGInputOutputComponent* IOComp = OutputNodes[i].Target->GetComponentByClass<URPGInputOutputComponent>();
 			if (!IsValid(IOComp)) {
-				UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - BeginPlay - TargetIOComp at index %d is invalid"), i);
+				UKismetSystemLibrary::PrintString(this, FString(TEXT("URPGInputOutputComponent - BeginPlay - TargetIOComp at index %d is invalid"), i));
 				continue;
 			}
 			OutputNodes[i].TargetIOComp = IOComp;
@@ -74,13 +75,13 @@ TArray<FName> URPGInputOutputComponent::GetActorInputs(AActor* Actor)
 	TArray<FName> Inputs;
 	
 	if (!IsValid(Actor)) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputComponent - GetActorInputs - No valid actor"));
+		UKismetSystemLibrary::PrintString(Actor, FString(TEXT("RPGInputOutputComponent - GetActorInputs - No valid actor")));
 		return Inputs;
 	}
 
 	auto* TargetIO = Actor->GetComponentByClass<URPGInputOutputComponent>();
 	if (!TargetIO) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputComponent - GetActorInputs - No InputOutputComponent found"));
+		UKismetSystemLibrary::PrintString(Actor, FString(TEXT("RPGInputOutputComponent - GetActorInputs - No InputOutputComponent found")));
 		return Inputs;
 	}
 
@@ -146,7 +147,7 @@ TArray<FName> URPGInputOutputComponent::GetAllActorInputs()
 FString URPGInputOutputComponent::OutputNodeToString(FOutputNode& Node) const
 {
 	if(Node.TargetType == EIOTargetType::Activator ) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent - OutputNodeToString - String conversation for FOutputNode with TargetType==Activator not implemented"));
+		UKismetSystemLibrary::PrintString(this, FString(TEXT("URPGInputOutputComponent - OutputNodeToString - String conversation for FOutputNode with TargetType==Activator not implemented")));
 		return FString(TEXT("ERROR - String conversation for FOutputNode with TargetType==Activator not implemented"));
 	}
 
@@ -171,12 +172,12 @@ void URPGInputOutputComponent::UpdateOutputActor(int32 OutputNodeIndex)
 void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 {
 	if (!OutputList.Contains(OutputName)) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent - FireOutput - %s output not found"), *OutputName);
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent - FireOutput - %s output not found"), *OutputName));
 		return;
 	}
 
 	if (!IsValid(Activator)) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent - FireOutput - %s - Activator not specified"), *OutputName);
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent - FireOutput - %s - Activator not specified"), *OutputName));
 		return;
 	}
 
@@ -192,8 +193,8 @@ void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 			}
 			#if !UE_BUILD_SHIPPING
 			else if(CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0) {
-				UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - FireOutput - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
-					*OutputNodeToString(OutputNodes[i]), OutputNodes[i].FireCount, OutputNodes[i].MaxFireCount);
+				UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent - FireOutput - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
+					*OutputNodeToString(OutputNodes[i]), OutputNodes[i].FireCount, OutputNodes[i].MaxFireCount));
 			}
 			#endif
 		}
@@ -253,7 +254,7 @@ bool WriteIOParamToParams(FProperty* Prop, void* Parms, FIOParameter& Param)
 void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName, TArray<FIOParameter> IOParamaters)
 {
 	if (!IsValid(OutputActor)) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputComponent - FireInput - OutputActor is invalid"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputComponent - FireInput - OutputActor is invalid")));
 		return;
 	}
 
@@ -261,7 +262,7 @@ void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName,
 	FString FuncName = FString(TEXT("IO_")); FuncName.Append(InputName);
 	UFunction* Func = GetOwner()->FindFunction(FName(*FuncName));
 	if (!Func) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputComponent - FireInput - Function with name %s not found"), *FuncName);
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputComponent - FireInput - Function with name %s not found"), *FuncName));
 		return;
 	}
 
@@ -285,20 +286,20 @@ void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName,
 		if (Prop->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
 
 		if (!IOParamaters.IsValidIndex(IOIndex)) {
-			UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent - FireInput - %s expects more parameters than configured (%d)"),
-				*FuncName, IOParamaters.Num());
+			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent - FireInput - %s expects more parameters than configured (%d)"),
+				*FuncName, IOParamaters.Num()));
 			bParamsMatch = false;
 			break;
 		}
 
 		FIOParameter& Param = IOParamaters[IOIndex];
 		if (Param.ParamName != Prop->GetName()) {
-			UE_LOG(LogTemp, Warning, TEXT("URPGInputOutputComponent - FireInput - %s - param %d name mismatch ('%s' vs '%s') - signature changed after configuration?"),
-				*FuncName, IOIndex, *Param.ParamName, *Prop->GetName());
+			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent - FireInput - %s - param %d name mismatch ('%s' vs '%s') - signature changed after configuration?"),
+				*FuncName, IOIndex, *Param.ParamName, *Prop->GetName()));
 		}
 		if (!WriteIOParamToParams(Prop, Parms, Param)) {
-			UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent - FireInput - %s: type mismatch on parameter '%s'"),
-				*FuncName, *Prop->GetName());
+			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent - FireInput - %s: type mismatch on parameter '%s'"),
+				*FuncName, *Prop->GetName()));
 			bParamsMatch = false;
 			break;
 		}
@@ -318,7 +319,7 @@ void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName,
 bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 {
 	if (OutputNodesToProcessDelay[index] > 0) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - Node Delay is above 0"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - Node Delay is above 0")));
 		return false;
 	}
 	int32 indexNode = OutputNodesToProcess[index];
@@ -326,8 +327,8 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	if (OutputNodes[indexNode].MaxFireCount != -1 && OutputNodes[indexNode].FireCount >= OutputNodes[indexNode].MaxFireCount) {
 #if !UE_BUILD_SHIPPING
 		if (CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0)
-			UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - ProcessOutputNode - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
-				*OutputNodeToString(OutputNodes[indexNode]), OutputNodes[indexNode].FireCount, OutputNodes[indexNode].MaxFireCount);
+			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent - ProcessOutputNode - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
+				*OutputNodeToString(OutputNodes[indexNode]), OutputNodes[indexNode].FireCount, OutputNodes[indexNode].MaxFireCount));
 #endif
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
@@ -335,7 +336,7 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 		return true;
 	}
 	if (!IsValid(OutputNodes[indexNode].OutputActor)) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - OutputActor is invalid"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - OutputActor is invalid")));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
 		OutputNodesToProcessActivators.RemoveAt(index);
@@ -346,7 +347,7 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	if (OutputNodes[indexNode].TargetType == EIOTargetType::Activator) {
 		OutputNodes[indexNode].Target = OutputNodesToProcessActivators[index];
 		if (!IsValid(OutputNodes[indexNode].Target)) {
-			UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - Target is not valid"));
+			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - Target is not valid")));
 			OutputNodesToProcess.RemoveAt(index);
 			OutputNodesToProcessDelay.RemoveAt(index);
 			OutputNodesToProcessActivators.RemoveAt(index);
@@ -356,21 +357,21 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	}
 
 	if (OutputNodes[indexNode].TargetType == EIOTargetType::Actor && !IsValid(OutputNodes[indexNode].Target)) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - Target is not valid"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - Target is not valid")));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
 		OutputNodesToProcessActivators.RemoveAt(index);
 		return true;
 	}
 	if (OutputNodes[indexNode].TargetInput.IsEmpty() || OutputNodes[indexNode].TargetInput.ToLower().Equals(TEXT("<none>"))) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetInput is not set"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetInput is not set")));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
 		OutputNodesToProcessActivators.RemoveAt(index);
 		return true;
 	}
 	if (OutputNodes[indexNode].TargetType != EIOTargetType::Self && !IsValid(OutputNodes[indexNode].TargetIOComp)) {
-		UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetIOComp is invalid"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetIOComp is invalid")));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
 		OutputNodesToProcessActivators.RemoveAt(index);
@@ -381,7 +382,6 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 
 	// Remove the nodes before firing input, as it might conflict with save system
 	// (for example we may fire Save Input that will save the state of OutputNodesToProcess, and we'll have unnecessary Save after loading the game)
-
 	OutputNodesToProcess.RemoveAt(index);
 	OutputNodesToProcessDelay.RemoveAt(index);
 	OutputNodesToProcessActivators.RemoveAt(index);
@@ -449,7 +449,7 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 	int32 Index = PropertyChangedEvent.GetArrayIndex(TEXT("OutputNodes"));
 
 	if (!OutputNodes.IsValidIndex(Index)) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - Improper index detected"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - Improper index detected")));
 		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
@@ -472,7 +472,7 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 	}
 
 	if (OutputNodes[Index].TargetType != EIOTargetType::Activator && OutputNodes[Index].Target == nullptr) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No Target set despite changing TargetInput"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No Target set despite changing TargetInput")));
 		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
@@ -480,7 +480,7 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 	if (OutputNodes[Index].TargetType != EIOTargetType::Activator) {
 		auto* IOComp = OutputNodes[Index].Target->GetComponentByClass<URPGInputOutputComponent>();
 		if (!IsValid(IOComp)) {
-			UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No InputOutputComponent found despite Target being valid"));
+			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No InputOutputComponent found despite Target being valid")));
 			Super::PostEditChangeChainProperty(PropertyChangedEvent);
 			return;
 		}
@@ -496,7 +496,7 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 	UFunction* Func = OutputNodes[Index].Target->FindFunction(FName(*TargetInputWithPrefix));
 
 	if (Func == nullptr) {
-		UE_LOG(LogTemp, Error, TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No input matching TargetInput was found"));
+		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No input matching TargetInput was found")));
 		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}
