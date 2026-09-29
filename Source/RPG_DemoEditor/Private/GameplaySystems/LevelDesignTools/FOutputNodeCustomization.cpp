@@ -63,54 +63,6 @@ void FOutputNodeCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Han
     }
 }
 
-void FOutputNodeCustomization::RefreshTarget()
-{
-    uint8 RawTargetType = 0;
-    if (TargetTypeHandle->GetValue(RawTargetType) != FPropertyAccess::Result::Success) {
-        return;
-    }
-    EIOTargetType TargetType = static_cast<EIOTargetType>(RawTargetType);
-    if (TargetType == EIOTargetType::Activator) {
-        TargetHandle->SetValue((AActor*)nullptr);
-    }
-    else if (TargetType == EIOTargetType::Self) {
-        TArray<UObject*> Objects;
-        TargetHandle->GetOuterObjects(Objects);
-        for (UObject* Obj : Objects) {
-            URPGInputOutputComponent* IOComp = Cast<URPGInputOutputComponent>(Obj);
-            if (IOComp) {
-                TargetHandle->SetValue(IOComp->GetOwner());
-                int32 index = MainHandle->GetIndexInArray();
-                IOComp->UpdateOutputActor(index);
-                break;
-            }
-        }
-    }
-}
-
-void FOutputNodeCustomization::CacheTargetIOComp()
-{
-    UObject* TargetObj = nullptr;
-    TargetHandle->GetValue(TargetObj);
-    AActor* Actor = Cast<AActor>(TargetObj);
-
-    if (IsValid(Actor)) {
-        URPGInputOutputComponent* TargetIOComp = Actor->GetComponentByClass<URPGInputOutputComponent>();
-        if (TargetIOComp) {
-            TArray<UObject*> Objects;
-            TargetHandle->GetOuterObjects(Objects);
-            for (UObject* Obj : Objects) {
-                URPGInputOutputComponent* IOComp = Cast<URPGInputOutputComponent>(Obj);
-                if (IOComp) {
-                    int32 index = MainHandle->GetIndexInArray();
-                    IOComp->OutputNodes[index].TargetIOComp = TargetIOComp;
-                    break;
-                }
-            }
-        }
-    }
-}
-
 void FOutputNodeCustomization::RefreshOptions()
 {
     Options.Reset();

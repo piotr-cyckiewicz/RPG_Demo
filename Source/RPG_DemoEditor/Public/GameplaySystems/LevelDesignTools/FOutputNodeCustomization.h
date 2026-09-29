@@ -22,8 +22,6 @@ public:
 
 
 private:
-	void RefreshTarget();
-	void CacheTargetIOComp();
 	void RefreshOptions();
 	void OnInputPicked(TSharedPtr<FString> Item, ESelectInfo::Type);
 	FText GetCurrentInputText() const;
