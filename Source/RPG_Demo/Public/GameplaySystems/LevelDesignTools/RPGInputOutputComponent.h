@@ -23,28 +23,30 @@ protected:
 	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 public:	
-	// Sets OutputActor in specified OutputNode to owner of this component
-	void UpdateOutputActor(int32 OutputNodeIndex);
 
 	// Used to trigger outputs (such as "OnTriggerEnter") in Blueprint for easier set up
 	UFUNCTION(BlueprintCallable)
 	void FireOutput(UPARAM(meta = (GetOptions = "GetOutputOptions")) FString OutputName, AActor* Activator = nullptr);
 
-	// Used to trigger input (such as "Teleport) with Parameters
+	// Used to trigger input (such as "Teleport") with Parameters
 	void FireInput(AActor* OutputActor, FString InputName, TArray<struct FIOParameter> IOParamaters);
 
 protected:
-	// Processes output node if it's delay is zero - triggers FireInput and deleted the node from Processing Queue
+	// Processes Output node if it's delay is zero - triggers FireInput and deletes the node from Processing Queue
 	bool ProcessOutputNode(int32 index);
 
 #if WITH_EDITOR
+	// Handles updates to variables of modified FOutputNode
 	virtual void PostEditChangeChainProperty(FPropertyChangedChainEvent& PropertyChangedEvent) override;
 #endif
 
 
 public:
+	// Configurable Output Nodes describing what and in what way is triggered after certain output (such as OnTriggerEnter) is triggered
 	UPROPERTY(EditInstanceOnly)
 	TArray<struct FOutputNode> OutputNodes;
+
+	// Arrays containing information about otput nodes that are currently in the queue
 	UPROPERTY()
 	TArray<int32> OutputNodesToProcess;
 	UPROPERTY()
@@ -52,6 +54,7 @@ public:
 	UPROPERTY()
 	TArray<AActor*> OutputNodesToProcessActivators;
 protected:
+	// Contains list of all possible outputs (for example TriggerBox may fire outputs such as OnTriggerEnter, or OnTriggerExit)
 	UPROPERTY(EditDefaultsOnly, Category = "InputOutputConfiguration")
 	TArray<FString> OutputList;
 
