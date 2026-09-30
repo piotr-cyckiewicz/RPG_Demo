@@ -78,7 +78,6 @@ void FOutputNodeCustomization::RefreshOptions()
 
     EIOTargetType TargetType = static_cast<EIOTargetType>(RawTargetType);
     if (Actor && TargetType != EIOTargetType::Activator) {
-        LoggingFunctionLibrary::PrintError(Actor, FString::Printf(TEXT("RefreshOptions Check 3")));
         for (const FName& In : URPGInputOutputComponent::GetActorInputs(Actor)) {
             Options.Add(MakeShared<FString>(In.ToString()));
         }
