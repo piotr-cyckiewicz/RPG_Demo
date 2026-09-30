@@ -25,20 +25,24 @@ void FOutputNodeCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Han
     TargetHandle = Handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FOutputNode, Target));
     TargetInputHandle = Handle->GetChildHandle(GET_MEMBER_NAME_CHECKED(FOutputNode, TargetInput));
 
+    // Changing TargetType or Target changes the set of available inputs, so options have to be rebuilt
     TargetTypeHandle->SetOnPropertyValueChanged(
         FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::RefreshOptions));
     TargetHandle->SetOnPropertyValueChanged(
         FSimpleDelegate::CreateSP(this, &FOutputNodeCustomization::RefreshOptions));
+
+    // Initial fill of options, so the combo box has proper content as soon as the panel is displayed
     RefreshOptions();
 
     
-
+    // Overriding CustomizeChildren means every member of FOutputNode has to be added manually - otherwise it wouldn't be displayed at all
     uint32 Num; Handle->GetNumChildren(Num);
     for (uint32 i = 0; i < Num; ++i)
     {
         TSharedRef<IPropertyHandle> Child = Handle->GetChildHandle(i).ToSharedRef();
         const FName Name = Child->GetProperty()->GetFName();
 
+        // TargetInput gets a searchable combo box instead of a plain text field.
         if (Name == GET_MEMBER_NAME_CHECKED(FOutputNode, TargetInput))
         {
             Builder.AddProperty(Child).CustomWidget()
@@ -56,6 +60,7 @@ void FOutputNodeCustomization::CustomizeChildren(TSharedRef<IPropertyHandle> Han
                         ]
                 ];
         }
+        // Remaining members are displayed with default widgets
         else
         {
             Builder.AddProperty(Child);
@@ -69,6 +74,8 @@ void FOutputNodeCustomization::RefreshOptions()
     UObject* TargetObj = nullptr;
     uint8 RawTargetType = 0;
     TargetHandle->GetValue(TargetObj);
+
+    // Without TargetType we can't tell where inputs come from (for example, when several nodes with different TargetType are selected)
     if (TargetTypeHandle->GetValue(RawTargetType) != FPropertyAccess::Result::Success) {
         return;
     }
@@ -77,12 +84,16 @@ void FOutputNodeCustomization::RefreshOptions()
     AActor* Actor = Cast<AActor>(TargetObj);
 
     EIOTargetType TargetType = static_cast<EIOTargetType>(RawTargetType);
+
+
     if (Actor && TargetType != EIOTargetType::Activator) {
         for (const FName& In : URPGInputOutputComponent::GetActorInputs(Actor)) {
             Options.Add(MakeShared<FString>(In.ToString()));
         }
     }
-        
+    
+    // Activator - the actual target is known only at runtime, so inputs of all blueprints with InputOutputComponent are listed.
+    // THIS IS VERY HEAVY! GetAllActorInputs scans asset registry and loads blueprint classes
     else if (TargetType == EIOTargetType::Activator) {
         for (const FName& In : URPGInputOutputComponent::GetAllActorInputs())
             Options.Add(MakeShared<FString>(In.ToString()));
@@ -90,6 +101,7 @@ void FOutputNodeCustomization::RefreshOptions()
 
 
     if (TargetInputComboBox) {
+        // Notify combo box that its OptionsSource has changed
         TargetInputComboBox->RefreshOptions();
         FString inpt = GetCurrentInputText().ToString();
         bool inptFound = false;
