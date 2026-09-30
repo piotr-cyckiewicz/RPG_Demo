@@ -3,7 +3,7 @@
 
 #include "GameplaySystems/Navigation/RPGMovementGridManager.h"
 #include "Algo/Reverse.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "Utilities/LoggingFunctionLibrary.h"
 
 // Sets default values
 ARPGMovementGridManager::ARPGMovementGridManager()
@@ -16,7 +16,7 @@ ARPGMovementGridManager::ARPGMovementGridManager()
 void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties)
 {
 	if (!IsValid(CellProperties.CellActor)) {
-		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("CellActor is not valid")));
+		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("CellActor is not valid")));
 		return;
 	}
 	
@@ -25,7 +25,7 @@ void ARPGMovementGridManager::AddCell(FMovementGridCellProperties CellProperties
 	FIntVector Coords = GetLogicalCoordinates(CellProperties.WorldPosition);
 	CellProperties.Coordinates = Coords;
 	if (CoordinatesToIndex.Contains(Coords)) {
-		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Duplicate cell at coords %s"), *Coords.ToString()));
+		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("Duplicate cell at coords %s"), *Coords.ToString()));
 	}
 	CoordinatesToIndex.Add(Coords, Cells.Num());
 
@@ -45,11 +45,11 @@ void ARPGMovementGridManager::BindCells()
 	// This is very slow, but it's fine for editor work. Binds 10k cellls without issues in couple of seconds.
 	for (const FIntActorPair& Connection : temporaryNeighbours) {
 		if (Connection.Num >= Cells.Num()) {
-			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Index in tempoaryNeighbours is greater/equal to size of Cells array")));
+			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("Index in tempoaryNeighbours is greater/equal to size of Cells array")));
 			continue;
 		}
 		if (!IsValid(Connection.Actor)) {
-			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Actor referenced in tempoaryNeighbours is not valid")));
+			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("Actor referenced in tempoaryNeighbours is not valid")));
 			continue;
 		}
 
@@ -62,11 +62,11 @@ void ARPGMovementGridManager::BindCells()
 		}
 
 		if (CellID == -1) {
-			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Actor listed in temporaryNeighbours array not found")));
+			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("Actor listed in temporaryNeighbours array not found")));
 			continue;
 		}
 		if (Connection.Num == CellID) {
-			UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Neighbour of the cell in temporaryNeighbours refers to the cell itself")));
+			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("Neighbour of the cell in temporaryNeighbours refers to the cell itself")));
 			continue;
 		}
 
@@ -140,7 +140,7 @@ TArray<int32> ARPGMovementGridManager::GetPath(FVector Start, FVector End, EComb
 		return Result;
 
 	if(MaxCost > 300)
-		UKismetSystemLibrary::PrintString(this, FString::Printf(TEXT("Too big cost of a path may result in inproper cost calculation")));
+		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("Too big cost of a path may result in inproper cost calculation")));
 
 
 	CurrentSearch++;

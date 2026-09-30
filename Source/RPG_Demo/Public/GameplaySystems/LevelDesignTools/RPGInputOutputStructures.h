@@ -59,7 +59,7 @@ struct FIOParameter
 		else if (Property->GetCPPType() == FString(TEXT("FString"))) ParamType = EIOParamType::String;
 		else if (Property->GetCPPType() == FString(TEXT("FVector"))) ParamType = EIOParamType::Vector;
 		else if (Property->GetCPPType() == FString(TEXT("AActor*"))) ParamType = EIOParamType::Actor;
-		else UE_LOG(LogTemp, Error, TEXT("RPGInputOutputStructures - FIOParameter(FProperty* Property) - Unsupported type of property"));
+		else UE_LOG(LogTemp, Fatal, TEXT("RPGInputOutputStructures - FIOParameter(FProperty* Property) - Unsupported type of property"));
 	}
 };
 

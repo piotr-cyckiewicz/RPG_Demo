@@ -10,7 +10,7 @@
 #include "Runtime/Core/Public/Misc/AssertionMacros.h"
 #include "Runtime/SlateCore/Public/Widgets/DeclarativeSyntaxSupport.h"
 #include "Developer/ToolWidgets/Public/SSearchableComboBox.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "Utilities/LoggingFunctionLibrary.h"
 
 void FOutputNodeCustomization::CustomizeHeader(TSharedRef<IPropertyHandle> Handle, FDetailWidgetRow& Row, IPropertyTypeCustomizationUtils&)
 {
@@ -78,7 +78,7 @@ void FOutputNodeCustomization::RefreshOptions()
 
     EIOTargetType TargetType = static_cast<EIOTargetType>(RawTargetType);
     if (Actor && TargetType != EIOTargetType::Activator) {
-        UKismetSystemLibrary::PrintString(Actor, FString::Printf(TEXT("RefreshOptions Check 3")));
+        LoggingFunctionLibrary::PrintError(Actor, FString::Printf(TEXT("RefreshOptions Check 3")));
         for (const FName& In : URPGInputOutputComponent::GetActorInputs(Actor)) {
             Options.Add(MakeShared<FString>(In.ToString()));
         }

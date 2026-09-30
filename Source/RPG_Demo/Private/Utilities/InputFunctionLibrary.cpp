@@ -3,6 +3,7 @@
 
 #include "Utilities/InputFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
+#include "Utilities/LoggingFunctionLibrary.h"
 #include "GameFramework/PlayerInput.h"
 #include "GenericPlatform/GenericPlatformInputDeviceMapper.h"
 #include "EnhancedInputSubsystems.h"
@@ -12,7 +13,7 @@ void UInputFunctionLibrary::SimulateKeyUse(const UObject* WorldContextObject, FK
     APlayerController* PC = UGameplayStatics::GetPlayerController(WorldContextObject, PlayerIndex);
     if (!PC || !PC->PlayerInput)
     {
-        UKismetSystemLibrary::PrintString(WorldContextObject, FString::Printf(TEXT("SimulateKeyUse: no PlayerController/PlayerInput")));
+        LoggingFunctionLibrary::PrintError(WorldContextObject, FString::Printf(TEXT("SimulateKeyUse: no PlayerController/PlayerInput")));
         return;
     }
 
@@ -26,7 +27,7 @@ void UInputFunctionLibrary::InjectInputAction(const UObject* WorldContextObject,
 {
     APlayerController* PC = UGameplayStatics::GetPlayerController(WorldContextObject, PlayerIndex);
     if (!PC || !Action) {
-        UKismetSystemLibrary::PrintString(WorldContextObject, FString::Printf(TEXT("InjectInputAction: no PlayerController/Action")));
+        LoggingFunctionLibrary::PrintError(WorldContextObject, FString::Printf(TEXT("InjectInputAction: no PlayerController/Action")));
         return;
     }
 
@@ -39,5 +40,5 @@ void UInputFunctionLibrary::InjectInputAction(const UObject* WorldContextObject,
         }
     }
 
-    UKismetSystemLibrary::PrintString(WorldContextObject, FString::Printf(TEXT("InjectInputAction: no LocalPlayerSubsystem/PlayerInput")));
+    LoggingFunctionLibrary::PrintError(WorldContextObject, FString::Printf(TEXT("InjectInputAction: no LocalPlayerSubsystem/PlayerInput")));
 }
