@@ -161,11 +161,12 @@ FString URPGInputOutputComponent::OutputNodeToString(FOutputNode& Node) const
 
 void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 {
+#if !UE_BUILD_SHIPPING
 	if (!OutputList.Contains(OutputName)) {
 		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - FireOutput - %s output not found"), *OutputName));
 		return;
 	}
-
+#endif
 	if (!IsValid(Activator)) {
 		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - FireOutput - %s - Activator not specified"), *OutputName));
 		return;
