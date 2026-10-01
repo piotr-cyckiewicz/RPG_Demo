@@ -28,6 +28,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void FireOutput(UPARAM(meta = (GetOptions = "GetOutputOptions")) FString OutputName, AActor* Activator = nullptr);
 
+	// Removes every output node that is waiting in this component's queue at the moment of the call
+	// Nodes added after the call are processed normally.
+	// Available to other IO components as built-in input "CancelPending" (no IO_ event needed on the owner).
+	UFUNCTION(BlueprintCallable)
+	void CancelPendingOutputs();
+
 	// Used to trigger input (such as "Teleport") with Parameters
 	void FireInput(AActor* OutputActor, FString InputName, TArray<struct FIOParameter> IOParamaters);
 
@@ -57,6 +63,12 @@ protected:
 	// Contains list of all possible outputs (for example TriggerBox may fire outputs such as OnTriggerEnter, or OnTriggerExit)
 	UPROPERTY(EditDefaultsOnly, Category = "InputOutputConfiguration")
 	TArray<FString> OutputList;
+
+	// Incremented by every CancelPendingOutputs. Helps with recognizing if queue was cleared in queue loops
+	int32 PendingGeneration = 0;
+
+	// Name of the built-in input handled by CancelPendingOutputs.
+	static constexpr const TCHAR* CancelPendingInputName = TEXT("CancelPending");
 
 
 public:

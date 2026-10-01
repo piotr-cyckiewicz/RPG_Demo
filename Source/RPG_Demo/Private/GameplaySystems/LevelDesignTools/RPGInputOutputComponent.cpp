@@ -49,6 +49,15 @@ void URPGInputOutputComponent::BeginPlay()
 			OutputNodes[i].TargetIOComp = IOComp;
 		}
 	}
+
+#if !UE_BUILD_SHIPPING
+	// CancelPending is a built-in input, so IO_CancelPending event on the owner should throw an error
+	FString ReservedName = FString(TEXT("IO_")) + CancelPendingInputName;
+	if (GetOwner()->FindFunction(FName(*ReservedName))) {
+		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - BeginPlay - %s defines IO_%s, but %s is a reserved built-in input - the event will never be called"),
+			*GetOwner()->GetActorNameOrLabel(), CancelPendingInputName, CancelPendingInputName));
+	}
+#endif
 }
 
 void URPGInputOutputComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -58,13 +67,19 @@ void URPGInputOutputComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 		OutputNodesToProcessDelay[i] -= DeltaTime;
 	}
 
+	int32 StartGeneration = PendingGeneration;
 	for (int i = 0; i < OutputNodesToProcessDelay.Num(); i++) {
 		if (OutputNodesToProcessDelay[i] <= 0) {
-			if (ProcessOutputNode(i))
+			bool bRemoved = ProcessOutputNode(i);
+			// CancelPending was fired during ProcessOutputNode() - queue got cleared
+			if (PendingGeneration != StartGeneration)
+				break;
+			if (bRemoved)
 				i--; // ProcessOutputNode removes nodes from OutputNodesToProcess and OutputNodesToProcessDelay, so index shouldn't be increased
 		}
 	}
 }
+
 
 TArray<FName> URPGInputOutputComponent::GetActorInputs(AActor* Actor)
 {
@@ -195,12 +210,34 @@ void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 	}
 
 	// instantly trigger new OutputNodes in the queue with Delay = 0
+	int32 StartGeneration = PendingGeneration;
 	for (int32 i = OldQueueSize; i < OutputNodesToProcess.Num(); i++) {
 		if (OutputNodesToProcessDelay[i] <= 0) {
-			if(ProcessOutputNode(i))
-				i--;
+			bool bRemoved = ProcessOutputNode(i);
+			// CancelPending was fired during ProcessOutputNode() - queue got cleared
+			if (PendingGeneration != StartGeneration)
+				break;
+			if(bRemoved)
+				i--;  // ProcessOutputNode removes nodes from OutputNodesToProcess and OutputNodesToProcessDelay, so index shouldn't be increased
 		}
 	}
+}
+
+void URPGInputOutputComponent::CancelPendingOutputs()
+{
+#if !UE_BUILD_SHIPPING
+	if (CVarIOSystemLogProcessingEvents.GetValueOnGameThread() > 0) {
+		UE_LOG(LogTemp, Log, TEXT("URPGInputOutputComponent - CancelPendingOutputs - %s cancelled %d pending output nodes"),
+			*GetOwner()->GetActorNameOrLabel(), OutputNodesToProcess.Num());
+	}
+#endif
+
+	OutputNodesToProcess.Reset();
+	OutputNodesToProcessDelay.Reset();
+	OutputNodesToProcessActivators.Reset();
+
+	// Lets every loop currently iterating over the queue (tick, FireOutput) know it has to stop
+	++PendingGeneration;
 }
 
 // Determines the type of property FProperty stores and updates it to the value of FIOParameter. Returns false if types mismatch.
@@ -253,6 +290,12 @@ void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName,
 {
 	if (!IsValid(OutputActor)) {
 		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("RPGInputOutputComponent - FireInput - OutputActor is invalid")));
+		return;
+	}
+
+	// CancelPendingOutputs is handled by component itself, we can do that instantly, without looking for IO_event on the owner
+	if (InputName.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) {
+		CancelPendingOutputs();
 		return;
 	}
 
@@ -395,6 +438,7 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	OutputNodes[indexNode].FireCount++;
 
 	// Trigger FireInput on proper InputOutputComponent
+	// Nothing after FireInput may touch OutputNodesToProcess or use index - CancelPendingOutputs may have been called on this component
 	if (OutputNodes[indexNode].TargetType == EIOTargetType::Self) {
 		FireInput(OutputNodes[indexNode].OutputActor,
 			OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
@@ -483,6 +527,13 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 		return;
 	}
 
+	// CancelPending has no IO_ event on the target
+	if (TargetInput.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) {
+		OutputNodes[Index].InputParameters.Reset();
+		Super::PostEditChangeChainProperty(PropertyChangedEvent);
+		return;
+	}
+
 	if (OutputNodes[Index].TargetType != EIOTargetType::Activator && OutputNodes[Index].Target == nullptr) {
 		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent::PostEditChangeChainProperty - No Target set despite changing TargetInput")));
 		Super::PostEditChangeChainProperty(PropertyChangedEvent);
@@ -558,9 +609,15 @@ TArray<FString> URPGInputOutputComponent::GetInputOptionsForClass(const UClass* 
 	{
 		if (It->GetName().StartsWith(TEXT("IO_")))
 		{
-			Result.Add(It->GetName().RightChop(3));
+			FString InputName = It->GetName().RightChop(3);
+			// IO_CancelPending should be shadowed by bult-in function (BeginPlay reports it) - don't list it twice
+			if (InputName.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) continue;
+			Result.Add(InputName);
 		}
 	}
+
+	// Add built-in CancelPending function to the inputs - it should be available on every IO component
+	Result.Add(FString(CancelPendingInputName));
 	return Result;
 }
 
