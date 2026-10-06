@@ -286,7 +286,7 @@ bool WriteIOParamToParams(FProperty* Prop, void* Parms, FIOParameter& Param)
 }
 
 // Used to trigger input (such as "Teleport") with Parameters. Fires custom event named IO_InputName on the owner. If there are parameters, it arranges them into the buffer and calls the event with said buffer
-void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName, TArray<FIOParameter> IOParamaters)
+void URPGInputOutputComponent::FireInput(AActor* OutputActor, AActor* Activator, FString InputName, TArray<FIOParameter> IOParamaters)
 {
 	if (!IsValid(OutputActor)) {
 		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("RPGInputOutputComponent - FireInput - OutputActor is invalid")));
@@ -343,6 +343,12 @@ void URPGInputOutputComponent::FireInput(AActor* OutputActor, FString InputName,
 			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - FireInput - %s - param %d name mismatch ('%s' vs '%s') - signature changed after configuration?"),
 				*FuncName, IOIndex, *Param.ParamName, *Prop->GetName()));
 		}
+
+		// Update Activator parameter with value passed by ProcessOutputNode()
+		if (CastField<FObjectProperty>(Prop) && Prop->GetName().ToLower() == FString(TEXT("activator")) && Param.ParamType == EIOParamType::Actor) {
+			Param.ActorValue = Activator;
+		}
+
 		if (!WriteIOParamToParams(Prop, Parms, Param)) {
 			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - FireInput - %s: type mismatch on parameter '%s'"),
 				*FuncName, *Prop->GetName()));
@@ -440,11 +446,11 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	// Trigger FireInput on proper InputOutputComponent
 	// Nothing after FireInput may touch OutputNodesToProcess or use index - CancelPendingOutputs may have been called on this component
 	if (OutputNodes[indexNode].TargetType == EIOTargetType::Self) {
-		FireInput(OutputNodes[indexNode].OutputActor,
+		FireInput(OutputNodes[indexNode].OutputActor, Activator,
 			OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
 	}
 	else {
-		OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor,
+		OutputNodes[indexNode].TargetIOComp->FireInput(OutputNodes[indexNode].OutputActor, Activator,
 			OutputNodes[indexNode].TargetInput, OutputNodes[indexNode].InputParameters);
 	}
 	

@@ -35,7 +35,7 @@ public:
 	void CancelPendingOutputs();
 
 	// Used to trigger input (such as "Teleport") with Parameters
-	void FireInput(AActor* OutputActor, FString InputName, TArray<struct FIOParameter> IOParamaters);
+	void FireInput(AActor* OutputActor, AActor* Activator, FString InputName, TArray<struct FIOParameter> IOParamaters);
 
 protected:
 	// Processes Output node if it's delay is zero - triggers FireInput and deletes the node from Processing Queue
