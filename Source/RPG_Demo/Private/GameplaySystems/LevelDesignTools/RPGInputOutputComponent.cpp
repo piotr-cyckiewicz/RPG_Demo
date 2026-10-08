@@ -143,6 +143,7 @@ TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorIn
 						for (FString& Option : GetInputOptionsForClass(BPGC)) {
 							FName InputName = FName(*Option);
 							if (Inputs.Contains(InputName)) continue; // Skip if we already found this input
+							if (Option.ToLower().Contains(FString(TEXT("DebugOnlyInput")))) continue; // Skip debug inputs - designers don't need tos ee it in Activator case
 
 							TArray<FIOParameter>& Params = Inputs.Add(InputName);
 							if (Option.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) continue; // CancelPending has no parameters
