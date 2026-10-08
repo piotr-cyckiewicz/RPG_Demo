@@ -105,9 +105,9 @@ TArray<FName> URPGInputOutputComponent::GetActorInputs(AActor* Actor)
 }
 
 #if WITH_EDITOR
-TArray<FName> URPGInputOutputComponent::GetAllActorInputs()
+TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorInputs()
 {
-	TArray<FName> Inputs;
+	TMap<FName, TArray<FIOParameter>> Inputs;
 
 	FAssetRegistryModule& AssetRegistryModule =
 		FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
@@ -141,7 +141,21 @@ TArray<FName> URPGInputOutputComponent::GetAllActorInputs()
 					if (Cast<URPGInputOutputComponent>(Node->ComponentTemplate))
 					{
 						for (FString& Option : GetInputOptionsForClass(BPGC)) {
-							Inputs.AddUnique(FName(*Option));
+							FName InputName = FName(*Option);
+							if (Inputs.Contains(InputName)) continue; // Skip if we already found this input
+
+							TArray<FIOParameter>& Params = Inputs.Add(InputName);
+							if (Option.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) continue; // CancelPending has no parameters
+
+							if (UFunction* Func = BPGC->FindFunctionByName(FName(*(TEXT("IO_") + Option)))) {
+								for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It) {
+									if (It->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
+									Params.Add(FIOParameter(*It));
+								}
+							}
+							else {
+								LoggingFunctionLibrary::PrintError(nullptr, FString::Printf(TEXT("URPGInputOutputComponent - GetAllActorInputs() - IO_%s should be on %s, but couldn't be found"), *Option, *BPGC->GetName()));
+							}
 						}
 						break;
 					}
@@ -557,6 +571,12 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 
 	if (OutputNodes[Index].TargetType == EIOTargetType::Activator) {
 		OutputNodes[Index].InputParameters.Reset();
+		auto ActorInputs = GetAllActorInputs();
+
+		if(auto* Params = ActorInputs.Find(FName(*TargetInput))) {
+			OutputNodes[Index].InputParameters = *Params;
+		}
+
 		Super::PostEditChangeChainProperty(PropertyChangedEvent);
 		return;
 	}

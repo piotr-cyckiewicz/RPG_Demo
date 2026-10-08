@@ -86,8 +86,7 @@ public:
 	static TArray<FName> GetActorInputs(AActor* Actor);
 #if WITH_EDITOR
 	// THIS IS VERY HEAVY! It uses asset registry to find all the outputs.
-	UFUNCTION()
-	static TArray<FName> GetAllActorInputs();
+	static TMap<FName, TArray<struct FIOParameter>> GetAllActorInputs();
 #endif
 
 private:

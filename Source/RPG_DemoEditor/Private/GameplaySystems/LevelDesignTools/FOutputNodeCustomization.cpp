@@ -95,8 +95,9 @@ void FOutputNodeCustomization::RefreshOptions()
     // Activator - the actual target is known only at runtime, so inputs of all blueprints with InputOutputComponent are listed.
     // THIS IS VERY HEAVY! GetAllActorInputs scans asset registry and loads blueprint classes
     else if (TargetType == EIOTargetType::Activator) {
-        for (const FName& In : URPGInputOutputComponent::GetAllActorInputs())
-            Options.Add(MakeShared<FString>(In.ToString()));
+        for (auto& In : URPGInputOutputComponent::GetAllActorInputs()) {
+            Options.Add(MakeShared<FString>(In.Key.ToString()));
+        }
     }
 
 
