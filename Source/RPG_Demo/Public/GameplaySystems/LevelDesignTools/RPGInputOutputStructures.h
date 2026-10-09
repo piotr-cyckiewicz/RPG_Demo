@@ -19,10 +19,6 @@ struct FIOParameter
 	UPROPERTY(VisibleInstanceOnly)
 	EIOParamType ParamType = EIOParamType::None;
 
-	// Used to disable editing this paramater in Details panel
-	UPROPERTY(VisibleInstanceOnly)
-	bool bAutoFilled = false;
-
 	UPROPERTY(EditInstanceOnly,
 		meta = (EditCondition = "ParamType == EIOParamType::Bool", EditConditionHides))
 	bool BoolValue = false;
@@ -44,7 +40,11 @@ struct FIOParameter
 	FVector VectorValue = FVector::ZeroVector;
 
 	UPROPERTY(EditInstanceOnly,
-		meta = (EditCondition = "ParamType == EIOParamType::Actor && !bAutoFilled", EditConditionHides))
+		meta = (EditCondition = "ParamType == EIOParamType::Actor", EditConditionHides))
+	bool bActivator = false;
+
+	UPROPERTY(EditInstanceOnly,
+		meta = (EditCondition = "ParamType == EIOParamType::Actor && !bActivator", EditConditionHides))
 	TObjectPtr<AActor> ActorValue = nullptr;
 
 	FIOParameter() {}
@@ -57,8 +57,6 @@ struct FIOParameter
 		this->ParamName = ParamName;
 		ParamType = EIOParamType::Actor;
 		this->ActorValue = ActorValue;
-		// Activator parameter is updated in the runtime, it shouldn't be editable by level designers
-		if(ParamName.ToLower() == FString(TEXT("activator"))) bAutoFilled = true;
 	}
 
 	FIOParameter(FProperty* Property) {
@@ -71,8 +69,6 @@ struct FIOParameter
 		else if (FObjectProperty* OProp = CastField<FObjectProperty>(Property);
 			OProp && !CastField<FClassProperty>(Property) && OProp->PropertyClass->IsChildOf<AActor>()) {
 			ParamType = EIOParamType::Actor;
-			// Activator parameter is updated in the runtime, it shouldn't be editable by level designers
-			if(ParamName.ToLower() == FString(TEXT("activator"))) bAutoFilled = true;
 		}
 		else UE_LOG(LogTemp, Fatal, TEXT("RPGInputOutputStructures - FIOParameter(FProperty* Property) - Unsupported type of property"));
 	}

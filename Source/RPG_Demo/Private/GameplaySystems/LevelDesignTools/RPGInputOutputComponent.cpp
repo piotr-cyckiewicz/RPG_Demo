@@ -143,7 +143,7 @@ TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorIn
 						for (FString& Option : GetInputOptionsForClass(BPGC)) {
 							FName InputName = FName(*Option);
 							if (Inputs.Contains(InputName)) continue; // Skip if we already found this input
-							if (Option.ToLower().Contains(FString(TEXT("DebugOnlyInput")))) continue; // Skip debug inputs - designers don't need tos ee it in Activator case
+							if (Option.ToLower().Contains(FString(TEXT("DebugOnlyInput")))) continue; // Skip debug inputs - designers don't need to see it in Activator case
 
 							TArray<FIOParameter>& Params = Inputs.Add(InputName);
 							if (Option.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) continue; // CancelPending has no parameters
@@ -197,10 +197,6 @@ void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 		return;
 	}
 #endif
-	if (!IsValid(Activator)) {
-		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - FireOutput - %s - Activator not specified"), *OutputName));
-		return;
-	}
 
 	int32 OldQueueSize = OutputNodesToProcess.Num(); // We want to trigger new output nodes in queue with Delay = 0 in this frame so we need to know which ones are new
 
@@ -359,8 +355,8 @@ void URPGInputOutputComponent::FireInput(AActor* OutputActor, AActor* Activator,
 				*FuncName, IOIndex, *Param.ParamName, *Prop->GetName()));
 		}
 
-		// Update Activator parameter with value passed by ProcessOutputNode()
-		if (CastField<FObjectProperty>(Prop) && Prop->GetName().ToLower() == FString(TEXT("activator")) && Param.ParamType == EIOParamType::Actor) {
+		// Update ActorValue with Activator if bActivator is checked
+		if (CastField<FObjectProperty>(Prop) && Param.ParamType == EIOParamType::Actor && Param.bActivator) {
 			Param.ActorValue = Activator;
 		}
 
@@ -416,6 +412,13 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	// Properly change Target and TargetIOComp if TargetType is Activator
 	if (OutputNodes[indexNode].TargetType == EIOTargetType::Activator) {
 		OutputNodes[indexNode].Target = OutputNodesToProcessActivators[index];
+		if (!IsValid(OutputNodesToProcessActivators[index])) {
+			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - Activator is invalid")));
+			OutputNodesToProcess.RemoveAt(index);
+			OutputNodesToProcessDelay.RemoveAt(index);
+			OutputNodesToProcessActivators.RemoveAt(index);
+			return true;
+		}
 		if (!IsValid(OutputNodes[indexNode].Target)) {
 			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - Target is not valid")));
 			OutputNodesToProcess.RemoveAt(index);
