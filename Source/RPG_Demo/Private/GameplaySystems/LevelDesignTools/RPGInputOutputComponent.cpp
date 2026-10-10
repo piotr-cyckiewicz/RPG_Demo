@@ -230,8 +230,8 @@ void URPGInputOutputComponent::FireOutput(FString OutputName, AActor* Activator)
 			#if !UE_BUILD_SHIPPING
 			// If FireCount exceeds MaxFireCount and logging of discarded nodes is enabled, we need to log it
 			else if(CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0) {
-				LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - FireOutput - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
-					*OutputNodeToString(OutputNodes[i]), OutputNodes[i].FireCount, OutputNodes[i].MaxFireCount));
+				UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - FireOutput - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
+					*OutputNodeToString(OutputNodes[i]), OutputNodes[i].FireCount, OutputNodes[i].MaxFireCount);
 			}
 			#endif
 		}
