@@ -80,6 +80,23 @@ void URPGInputOutputComponent::TickComponent(float DeltaTime, enum ELevelTick Ti
 	}
 }
 
+void URPGInputOutputComponent::EndPlay(const EEndPlayReason::Type Reason)
+{
+	if (Reason == EEndPlayReason::EndPlayInEditor || Reason == EEndPlayReason::RemovedFromWorld) { Super::EndPlay(Reason); return; };
+	if (OutputNodesToProcess.Num() == 0) { Super::EndPlay(Reason); return; };
+#if !UE_BUILD_SHIPPING
+	if (CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0) {
+		LoggingFunctionLibrary::PrintWarning(this, FString::Printf(TEXT("URPGInputOutputComponent - %d events cancelled due to desctuction of IO Component:"),
+			OutputNodesToProcess.Num()));
+		for (auto index : OutputNodesToProcess) {
+			LoggingFunctionLibrary::PrintWarning(this, FString::Printf(TEXT(" - %s"),
+				*OutputNodeToString(OutputNodes[index])));
+		}
+	}
+#endif
+	Super::EndPlay(Reason);
+}
+
 
 TArray<FName> URPGInputOutputComponent::GetActorInputs(AActor* Actor)
 {
@@ -238,8 +255,8 @@ void URPGInputOutputComponent::CancelPendingOutputs()
 {
 #if !UE_BUILD_SHIPPING
 	if (CVarIOSystemLogProcessingEvents.GetValueOnGameThread() > 0) {
-		UE_LOG(LogTemp, Log, TEXT("URPGInputOutputComponent - CancelPendingOutputs - %s cancelled %d pending output nodes"),
-			*GetOwner()->GetActorNameOrLabel(), OutputNodesToProcess.Num());
+		LoggingFunctionLibrary::PrintWarning(this, FString::Printf(TEXT("URPGInputOutputComponent - CancelPendingOutputs - %s cancelled %d pending output nodes"),
+			*GetOwner()->GetActorNameOrLabel(), OutputNodesToProcess.Num()));
 	}
 #endif
 
