@@ -73,6 +73,8 @@ protected:
 
 
 public:
+	UFUNCTION(BlueprintPure)
+	int32 GetProcessingOutputNodesQueueSize() const;
 	UFUNCTION()
 	TArray<FString> GetOutputOptions() const;
 	UFUNCTION()

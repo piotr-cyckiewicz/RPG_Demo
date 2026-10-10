@@ -86,11 +86,11 @@ void URPGInputOutputComponent::EndPlay(const EEndPlayReason::Type Reason)
 	if (OutputNodesToProcess.Num() == 0) { Super::EndPlay(Reason); return; };
 #if !UE_BUILD_SHIPPING
 	if (CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0) {
-		LoggingFunctionLibrary::PrintWarning(this, FString::Printf(TEXT("URPGInputOutputComponent - %d events cancelled due to desctuction of IO Component:"),
-			OutputNodesToProcess.Num()));
+		UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - %d events cancelled due to desctuction of IO Component:"),
+			OutputNodesToProcess.Num());
 		for (auto index : OutputNodesToProcess) {
-			LoggingFunctionLibrary::PrintWarning(this, FString::Printf(TEXT(" - %s"),
-				*OutputNodeToString(OutputNodes[index])));
+			UE_LOG(LogTemp, Display, TEXT(" - %s"),
+				*OutputNodeToString(OutputNodes[index]));
 		}
 	}
 #endif
@@ -410,8 +410,8 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 	if (OutputNodes[indexNode].MaxFireCount != -1 && OutputNodes[indexNode].FireCount >= OutputNodes[indexNode].MaxFireCount) {
 #if !UE_BUILD_SHIPPING
 		if (CVarIOSystemLogDiscardedEvents.GetValueOnGameThread() > 0)
-			LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("URPGInputOutputComponent - ProcessOutputNode - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
-				*OutputNodeToString(OutputNodes[indexNode]), OutputNodes[indexNode].FireCount, OutputNodes[indexNode].MaxFireCount));
+			UE_LOG(LogTemp, Display, TEXT("URPGInputOutputComponent - ProcessOutputNode - Output Node %s discarded due to Fire Count (%d) exceeding Max Fire Count (%d)"),
+				*OutputNodeToString(OutputNodes[indexNode]), OutputNodes[indexNode].FireCount, OutputNodes[indexNode].MaxFireCount);
 #endif
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);
@@ -626,6 +626,11 @@ void URPGInputOutputComponent::PostEditChangeChainProperty(FPropertyChangedChain
 }
 #endif
 
+
+int32 URPGInputOutputComponent::GetProcessingOutputNodesQueueSize() const
+{
+	return OutputNodesToProcess.Num();
+}
 
 TArray<FString> URPGInputOutputComponent::GetOutputOptions() const
 {
