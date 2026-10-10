@@ -9,3 +9,9 @@ void LoggingFunctionLibrary::PrintError(const UObject* WorldContextObject, const
 	UKismetSystemLibrary::PrintString(WorldContextObject, InString, true, false, FLinearColor::Red, 5.0f);
 	UE_LOG(LogTemp, Error, TEXT("%s"), *InString);
 }
+
+void LoggingFunctionLibrary::PrintWarning(const UObject* WorldContextObject, const FString& InString)
+{
+	UKismetSystemLibrary::PrintString(WorldContextObject, InString, true, false, FLinearColor::Yellow, 4.0f);
+	UE_LOG(LogTemp, Warning, TEXT("%s"), *InString);
+}
