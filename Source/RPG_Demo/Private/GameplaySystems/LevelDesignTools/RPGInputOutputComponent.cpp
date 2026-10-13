@@ -192,8 +192,9 @@ TArray<FString> URPGInputOutputComponent::ValidateOutputNodes()
 	result.Add(FString::Printf(TEXT("IO System validation for %s:"), *GetOwner()->GetActorNameOrLabel()));
 	int32 counter = 0;
 	for (auto& SingleNode : OutputNodes) {
-		result.Add(FString(TEXT("- Checking Output Node with index %d..."), counter));
+		result.Add(FString::Printf(TEXT("- Checking Output Node with index %d..."), counter));
 		result += ValidateSingleOutputNode(SingleNode);
+		counter++;
 	}
 	result.Add(FString::Printf(TEXT("IO System validation for %s done! All found errors were listed"), *GetOwner()->GetActorNameOrLabel()));
 	return result;
@@ -209,7 +210,7 @@ TArray<FString> URPGInputOutputComponent::ValidateSingleOutputNode(FOutputNode& 
 		if(Node.Target->GetComponentByClass<URPGInputOutputComponent>() != Node.TargetIOComp) 
 			result.Add(FString(TEXT("-- TargetIO is either invalid or different than Target Input Output Component")));
 	}
-	if(IsValid(Node.Target) && !GetInputOptionsForClass(Node.Target->StaticClass()).Contains(Node.TargetInput))
+	if(IsValid(Node.Target) && !GetInputOptionsForClass(Node.Target->GetClass()).Contains(Node.TargetInput))
 		result.Add(FString::Printf(TEXT("-- Target doesn't have input named %s"), *Node.TargetInput));
 	//TODO: Check InputParamaters
 	if (Node.Delay < 0) result.Add(FString(TEXT("-- Delay is smaller than zero")));
