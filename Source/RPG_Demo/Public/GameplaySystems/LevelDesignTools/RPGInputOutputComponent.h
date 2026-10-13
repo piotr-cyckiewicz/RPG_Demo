@@ -91,7 +91,12 @@ public:
 	// THIS IS VERY HEAVY! It uses asset registry to find all the outputs.
 	static TMap<FName, TArray<struct FIOParameter>> GetAllActorInputs();
 #endif
+	// Loops through every defined OutputNode on this component and returns TArray of found errors.
+	UFUNCTION(BlueprintCallable)
+	TArray<FString> ValidateOutputNodes();
 
+protected:
+	TArray<FString> ValidateSingleOutputNode(FOutputNode& Node);
 private:
 #if !UE_BUILD_SHIPPING
 	FString OutputNodeToString(FOutputNode& Node) const;

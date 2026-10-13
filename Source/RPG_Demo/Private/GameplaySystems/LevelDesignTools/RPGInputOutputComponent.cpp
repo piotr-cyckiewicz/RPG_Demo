@@ -186,6 +186,39 @@ TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorIn
 }
 #endif
 
+TArray<FString> URPGInputOutputComponent::ValidateOutputNodes()
+{
+	TArray<FString> result = TArray<FString>();
+	result.Add(FString::Printf(TEXT("IO System validation for %s:"), *GetOwner()->GetActorNameOrLabel()));
+	int32 counter = 0;
+	for (auto& SingleNode : OutputNodes) {
+		result.Add(FString(TEXT("- Checking Output Node with index %d..."), counter));
+		result += ValidateSingleOutputNode(SingleNode);
+	}
+	result.Add(FString::Printf(TEXT("IO System validation for %s done! All found errors were listed"), *GetOwner()->GetActorNameOrLabel()));
+	return result;
+}
+
+TArray<FString> URPGInputOutputComponent::ValidateSingleOutputNode(FOutputNode& Node)
+{
+	TArray<FString> result = TArray<FString>();
+	if (!IsValid(Node.OutputActor) || Node.OutputActor != GetOwner()) result.Add(FString(TEXT("-- OutputActor is not set properly")));
+	if (!GetOutputOptions().Contains(Node.OutputType)) result.Add(FString(TEXT("-- OutputType is not valid")));
+	if (!IsValid(Node.Target) && Node.TargetType != EIOTargetType::Activator) result.Add(FString(TEXT("-- Target is not valid despite TargetType not being set to Activator")));
+	if (IsValid(Node.Target)) {
+		if(Node.Target->GetComponentByClass<URPGInputOutputComponent>() != Node.TargetIOComp) 
+			result.Add(FString(TEXT("-- TargetIO is either invalid or different than Target Input Output Component")));
+	}
+	if(IsValid(Node.Target) && !GetInputOptionsForClass(Node.Target->StaticClass()).Contains(Node.TargetInput))
+		result.Add(FString::Printf(TEXT("-- Target doesn't have input named %s"), *Node.TargetInput));
+	//TODO: Check InputParamaters
+	if (Node.Delay < 0) result.Add(FString(TEXT("-- Delay is smaller than zero")));
+	if (Node.MaxFireCount < -1 || Node.MaxFireCount == 0) result.Add(FString(TEXT("-- MaxFireCount is either zero (which makes the node useless) or smaller than -1")));
+	if (Node.FireCount != 0) result.Add(FString(TEXT("-- FireCount is different than zero")));
+	if (Node.DelayTimer != 0) result.Add(FString(TEXT("-- DelayTimer is different than zero")));
+	return result;
+}
+
 #if !UE_BUILD_SHIPPING
 FString URPGInputOutputComponent::OutputNodeToString(FOutputNode& Node) const
 {
