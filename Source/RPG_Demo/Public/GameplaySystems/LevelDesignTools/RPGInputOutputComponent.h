@@ -92,7 +92,7 @@ public:
 	static TMap<FName, TArray<struct FIOParameter>> GetAllActorInputs();
 #endif
 	// Loops through every defined OutputNode on this component and returns TArray of found errors.
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintPure)
 	TArray<FString> ValidateOutputNodes();
 
 protected:
