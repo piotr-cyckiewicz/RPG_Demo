@@ -48,6 +48,9 @@ void URPGInputOutputComponent::BeginPlay()
 			}
 			OutputNodes[i].TargetIOComp = IOComp;
 		}
+		else if (OutputNodes[i].TargetType == EIOTargetType::Self) {
+			OutputNodes[i].TargetIOComp = this;
+		}
 	}
 
 #if !UE_BUILD_SHIPPING
@@ -186,12 +189,12 @@ TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorIn
 }
 #endif
 
-TArray<FString> URPGInputOutputComponent::ValidateOutputNodes()
+TArray<FString> URPGInputOutputComponent::ValidateOutputNodes(bool BeforeGameplayStartCheck)
 {
 	TArray<FString> result = TArray<FString>();
 	int32 counter = 0;
 	for (auto& SingleNode : OutputNodes) {
-		auto Errors = ValidateSingleOutputNode(SingleNode);
+		auto Errors = ValidateSingleOutputNode(SingleNode, BeforeGameplayStartCheck);
 		for (int i = 0; i < Errors.Num(); i++) {
 			Errors[i] = FString::Printf(TEXT("IO System - %s, OutputNode number %d - "), *GetOwner()->GetActorNameOrLabel(), counter).Append(Errors[i]);
 		}
@@ -201,10 +204,9 @@ TArray<FString> URPGInputOutputComponent::ValidateOutputNodes()
 	return result;
 }
 
-TArray<FString> URPGInputOutputComponent::ValidateSingleOutputNode(FOutputNode& Node)
+TArray<FString> URPGInputOutputComponent::ValidateSingleOutputNode(FOutputNode& Node, bool BeforeGameplayStartCheck)
 {
 	TArray<FString> result = TArray<FString>();
-	if (!IsValid(Node.OutputActor) || Node.OutputActor != GetOwner()) result.Add(FString(TEXT("OutputActor is not set properly")));
 	if (!GetOutputOptions().Contains(Node.OutputType)) result.Add(FString(TEXT("OutputType is not valid")));
 	if (!IsValid(Node.Target) && Node.TargetType != EIOTargetType::Activator) result.Add(FString(TEXT("Target is not valid despite TargetType not being set to Activator")));
 	if (IsValid(Node.Target)) {
@@ -213,11 +215,54 @@ TArray<FString> URPGInputOutputComponent::ValidateSingleOutputNode(FOutputNode& 
 	}
 	if(IsValid(Node.Target) && !GetInputOptionsForClass(Node.Target->GetClass()).Contains(Node.TargetInput))
 		result.Add(FString::Printf(TEXT("Target doesn't have input named %s"), *Node.TargetInput));
-	//TODO: Check InputParamaters
 	if (Node.Delay < 0) result.Add(FString(TEXT("Delay is smaller than zero")));
 	if (Node.MaxFireCount < -1 || Node.MaxFireCount == 0) result.Add(FString(TEXT("MaxFireCount is either zero (which makes the node useless) or smaller than -1")));
-	if (Node.FireCount != 0) result.Add(FString(TEXT("FireCount is different than zero")));
-	if (Node.DelayTimer != 0) result.Add(FString(TEXT("DelayTimer is different than zero")));
+	if (Node.FireCount != 0 && BeforeGameplayStartCheck) result.Add(FString(TEXT("FireCount is different than zero")));
+	if (Node.DelayTimer != 0 && BeforeGameplayStartCheck) result.Add(FString(TEXT("DelayTimer is different than zero")));
+
+
+	// Input Parameters Check
+	if (Node.TargetInput == CancelPendingInputName) {
+		if (Node.InputParameters.Num() != 0) {
+			result.Add(FString::Printf(TEXT("One of the Inputs is CancelPending and has more than 0 parameters")));
+		}
+		return result;
+	}
+
+	UFunction* Func = nullptr;
+	FString TargetInputWithPrefix;
+	if (IsValid(Node.Target)) {
+		TargetInputWithPrefix = FString(TEXT("IO_")).Append(Node.TargetInput);
+		Func = Node.Target->FindFunction(FName(*TargetInputWithPrefix));
+	}
+	
+
+	if (Func == nullptr) {
+		if (IsValid(Node.Target)) {
+			result.Add(FString::Printf(TEXT("No input matching TargetInput(%s) was found on actor %s"), *Node.TargetInput, *Node.Target->GetActorNameOrLabel()));
+		}
+		else {
+			result.Add(FString::Printf(TEXT("No input matching TargetInput(%s) was found"), *Node.TargetInput));
+		}
+		return result;
+	}
+
+	int ParamIndex = 0;
+	for (TFieldIterator<FProperty> It(Func); It; ++It)
+	{
+		FProperty* Property = *It;
+		if (!Property->HasAnyPropertyFlags(CPF_Parm)) continue;
+		if (Property->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
+
+		auto Param = FIOParameter(Property);
+		if (Param.ParamType != Node.InputParameters[ParamIndex].ParamType) {
+			result.Add(FString::Printf(TEXT("Param type mismatch on TargetInput %s on Target %s"), *TargetInputWithPrefix, *Node.Target->GetActorNameOrLabel()));
+		}
+		if (Param.ParamName != Node.InputParameters[ParamIndex].ParamName) {
+			result.Add(FString::Printf(TEXT("Param name mismatch on TargetInput %s on Target %s"), *TargetInputWithPrefix, *Node.Target->GetActorNameOrLabel()));
+		}
+		ParamIndex++;
+	}
 	return result;
 }
 
@@ -495,7 +540,7 @@ bool URPGInputOutputComponent::ProcessOutputNode(int32 index)
 		OutputNodesToProcessActivators.RemoveAt(index);
 		return true;
 	}
-	if (OutputNodes[indexNode].TargetType != EIOTargetType::Self && !IsValid(OutputNodes[indexNode].TargetIOComp)) {
+	if (!IsValid(OutputNodes[indexNode].TargetIOComp)) {
 		LoggingFunctionLibrary::PrintError(this, FString::Printf(TEXT("RPGInputOutputStructures - ProcessOutputNode - TargetIOComp is invalid")));
 		OutputNodesToProcess.RemoveAt(index);
 		OutputNodesToProcessDelay.RemoveAt(index);

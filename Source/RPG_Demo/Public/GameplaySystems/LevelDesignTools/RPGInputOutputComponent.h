@@ -93,10 +93,10 @@ public:
 #endif
 	// Loops through every defined OutputNode on this component and returns TArray of found errors.
 	UFUNCTION(BlueprintPure)
-	TArray<FString> ValidateOutputNodes();
+	TArray<FString> ValidateOutputNodes(bool BeforeGameplayStartCheck = true);
 
 protected:
-	TArray<FString> ValidateSingleOutputNode(FOutputNode& Node);
+	TArray<FString> ValidateSingleOutputNode(FOutputNode& Node, bool BeforeGameplayStartCheck = true);
 private:
 #if !UE_BUILD_SHIPPING
 	FString OutputNodeToString(FOutputNode& Node) const;
