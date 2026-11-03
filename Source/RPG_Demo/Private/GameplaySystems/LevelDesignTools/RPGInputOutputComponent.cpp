@@ -61,6 +61,13 @@ void URPGInputOutputComponent::BeginPlay()
 			*GetOwner()->GetActorNameOrLabel(), CancelPendingInputName, CancelPendingInputName));
 	}
 #endif
+#if WITH_EDITOR
+	ValidateOutputNodes();
+	if (!bValidateInputParametersForIdenticalTargetInputsDone) {
+		ValidateInputParametersForIdenticalTargetInputs();
+		bValidateInputParametersForIdenticalTargetInputsDone = true;
+	}
+#endif
 }
 
 void URPGInputOutputComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -125,6 +132,71 @@ TArray<FName> URPGInputOutputComponent::GetActorInputs(AActor* Actor)
 }
 
 #if WITH_EDITOR
+TArray<FIOParameter> URPGInputOutputComponent::GetInputParametersForTargetInput(FString TargetInput, bool& InputFound)
+{
+	InputFound = false;
+	auto result = TArray<FIOParameter>();
+	TMap<FName, TArray<FIOParameter>> Inputs;
+
+	FAssetRegistryModule& AssetRegistryModule =
+		FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+	FARFilter Filter;
+	Filter.ClassPaths.Add(UBlueprint::StaticClass()->GetClassPathName());
+	Filter.bRecursiveClasses = true;
+	Filter.PackagePaths.Add(TEXT("/Game")); // Skip engine content
+	Filter.bRecursivePaths = true;
+
+	TArray<FAssetData> Blueprints;
+	AssetRegistry.GetAssets(Filter, Blueprints);
+
+	for (const FAssetData& Asset : Blueprints)
+	{
+		FString BlueprintType;
+		if (Asset.GetTagValue(FBlueprintTags::BlueprintType, BlueprintType)
+			&& (BlueprintType == TEXT("BPTYPE_NORMAL") || BlueprintType == TEXT("BPTYPE_Normal")))
+		{
+			FString ClassPath;
+			Asset.GetTagValue(FBlueprintTags::GeneratedClassPath, ClassPath);
+			FString ObjectPath = FPackageName::ExportTextPathToObjectPath(ClassPath);
+			UClass* ObjectClass = LoadObject<UClass>(nullptr, *ObjectPath);
+			if (!IsValid(ObjectClass)) continue;
+			UBlueprintGeneratedClass* BPGC = Cast<UBlueprintGeneratedClass>(ObjectClass);
+			if (BPGC && BPGC->SimpleConstructionScript)
+			{
+				for (USCS_Node* Node : BPGC->SimpleConstructionScript->GetAllNodes())
+				{
+					if (Cast<URPGInputOutputComponent>(Node->ComponentTemplate))
+					{
+						for (FString& Option : GetInputOptionsForClass(BPGC)) {
+							if (Option != TargetInput) continue;
+							InputFound = true;
+							FName InputName = FName(*Option);
+							
+							if (Option.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) return result; // CancelPending has no parameters
+
+							if (UFunction* Func = BPGC->FindFunctionByName(FName(*(TEXT("IO_") + Option)))) {
+								for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It) {
+									if (It->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
+									result.Add(FIOParameter(*It));
+								}
+								return result;
+							}
+							else {
+								LoggingFunctionLibrary::PrintError(nullptr, FString::Printf(TEXT("URPGInputOutputComponent - GGetInputParametersForTargetInput() - IO_%s should be on %s, but couldn't be found"), *Option, *BPGC->GetName()));
+							}
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+	LoggingFunctionLibrary::PrintError(nullptr, FString::Printf(TEXT("URPGInputOutputComponent - GGetInputParametersForTargetInput() - Input Parameters for %s TargetInput couldn't be found"), *TargetInput));
+	return result;
+}
+
 TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorInputs()
 {
 	TMap<FName, TArray<FIOParameter>> Inputs;
@@ -189,6 +261,106 @@ TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorIn
 }
 #endif
 
+TArray<FString> URPGInputOutputComponent::ValidateInputParametersForIdenticalTargetInputs()
+{
+	TArray<FString> result;
+	TMap<FName, TArray<FIOParameter>> Inputs;
+	TArray<FString> BPNames;
+
+	FAssetRegistryModule& AssetRegistryModule =
+		FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+	IAssetRegistry& AssetRegistry = AssetRegistryModule.Get();
+
+	FARFilter Filter;
+	Filter.ClassPaths.Add(UBlueprint::StaticClass()->GetClassPathName());
+	Filter.bRecursiveClasses = true;
+	Filter.PackagePaths.Add(TEXT("/Game")); // Skip engine content
+	Filter.bRecursivePaths = true;
+
+	TArray<FAssetData> Blueprints;
+	AssetRegistry.GetAssets(Filter, Blueprints);
+
+	for (const FAssetData& Asset : Blueprints)
+	{
+		FString BlueprintType;
+		if (Asset.GetTagValue(FBlueprintTags::BlueprintType, BlueprintType)
+			&& (BlueprintType == TEXT("BPTYPE_NORMAL") || BlueprintType == TEXT("BPTYPE_Normal")))
+		{
+			FString ClassPath;
+			Asset.GetTagValue(FBlueprintTags::GeneratedClassPath, ClassPath);
+			FString ObjectPath = FPackageName::ExportTextPathToObjectPath(ClassPath);
+			UClass* ObjectClass = LoadObject<UClass>(nullptr, *ObjectPath);
+			if (!IsValid(ObjectClass)) continue;
+			UBlueprintGeneratedClass* BPGC = Cast<UBlueprintGeneratedClass>(ObjectClass);
+			if (BPGC && BPGC->SimpleConstructionScript)
+			{
+				for (USCS_Node* Node : BPGC->SimpleConstructionScript->GetAllNodes())
+				{
+					if (Cast<URPGInputOutputComponent>(Node->ComponentTemplate))
+					{
+						for (FString& Option : GetInputOptionsForClass(BPGC)) {
+							FName InputName = FName(*Option);
+							if (Option.ToLower().Contains(FString(TEXT("DebugOnlyInput")))) continue; // Skip debug inputs - designers don't need to see it in Activator case
+
+							if (Inputs.Contains(InputName)) {
+								if (Option.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) continue; // CancelPending has no parameters
+								TArray<FIOParameter> Params;
+								if (UFunction* Func = BPGC->FindFunctionByName(FName(*(TEXT("IO_") + Option)))) {
+									for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It) {
+										if (It->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
+										Params.Add(FIOParameter(*It));
+									}
+									TArray<FIOParameter>* AddedInputs = Inputs.Find(InputName);
+									if (AddedInputs->Num() != Params.Num()) {
+										result.Add(FString::Printf(TEXT("%s has TargetInput %s that has different InputParameters than the same target input on %s"),
+											*BPNames[Inputs.FindId(InputName).AsInteger()], *Option, *BPGC->GetName()));
+									}
+									else {
+										for (int i = 0; i < AddedInputs->Num(); i++) {
+											if ((*AddedInputs)[i].ParamName != Params[i].ParamName) {
+												result.Add(FString::Printf(TEXT("%s has TargetInput %s that has different InputParameters than the same target input on %s"),
+													*BPNames[Inputs.FindId(InputName).AsInteger()], *Option, *BPGC->GetName()));
+												break;
+											}
+										}
+										for (int i = 0; i < AddedInputs->Num(); i++) {
+											if ((*AddedInputs)[i].ParamType != Params[i].ParamType) {
+												result.Add(FString::Printf(TEXT("%s has TargetInput %s that has different InputParameters than the same target input on %s"),
+													*BPNames[Inputs.FindId(InputName).AsInteger()], *Option, *BPGC->GetName()));
+												break;
+											}
+										}
+									}
+								}
+								else {
+									LoggingFunctionLibrary::PrintError(nullptr, FString::Printf(TEXT("URPGInputOutputComponent - GetAllActorInputs() - IO_%s should be on %s, but couldn't be found"), *Option, *BPGC->GetName()));
+								}
+							}
+
+							TArray<FIOParameter>& Params = Inputs.Add(InputName);
+							BPNames.Add(BPGC->GetName());
+							if (Option.Equals(CancelPendingInputName, ESearchCase::IgnoreCase)) continue; // CancelPending has no parameters
+
+							if (UFunction* Func = BPGC->FindFunctionByName(FName(*(TEXT("IO_") + Option)))) {
+								for (TFieldIterator<FProperty> It(Func); It && It->HasAnyPropertyFlags(CPF_Parm); ++It) {
+									if (It->HasAnyPropertyFlags(CPF_ReturnParm)) continue;
+									Params.Add(FIOParameter(*It));
+								}
+							}
+							else {
+								LoggingFunctionLibrary::PrintError(nullptr, FString::Printf(TEXT("URPGInputOutputComponent - GetAllActorInputs() - IO_%s should be on %s, but couldn't be found"), *Option, *BPGC->GetName()));
+							}
+						}
+						break;
+					}
+				}
+			}
+		}
+	}
+
+	return result;
+}
+
 TArray<FString> URPGInputOutputComponent::ValidateOutputNodes(bool BeforeGameplayStartCheck)
 {
 	TArray<FString> result = TArray<FString>();
@@ -228,7 +400,29 @@ TArray<FString> URPGInputOutputComponent::ValidateSingleOutputNode(FOutputNode& 
 		}
 		return result;
 	}
-
+#if WITH_EDITOR
+	// Input Parameters Check - If target type is activator, we validate that completely differently than other cases
+	if (Node.TargetType == EIOTargetType::Activator) {
+		bool SearchResult;
+		auto Inputs = GetInputParametersForTargetInput(Node.TargetInput, SearchResult);
+		if (!SearchResult) {
+			result.Add(FString::Printf(TEXT("TargetInput %s couldn't be found on any BP with IOComponent"), *Node.TargetInput));
+			return result;
+		}
+		if (Inputs.Num() != Node.InputParameters.Num()) {
+			result.Add(FString::Printf(TEXT("Parameters of TargetInput %s mismatch the ones found on IO blueprint event"), *Node.TargetInput));
+			return result;
+		}
+		for (int i = 0; i < Inputs.Num(); i++) {
+			if(Inputs[i].ParamName != Node.InputParameters[i].ParamName)
+				result.Add(FString::Printf(TEXT("Parameters of TargetInput %s mismatch the ones found on IO blueprint event"), *Node.TargetInput));
+			if (Inputs[i].ParamType != Node.InputParameters[i].ParamType)
+				result.Add(FString::Printf(TEXT("Parameters of TargetInput %s mismatch the ones found on IO blueprint event"), *Node.TargetInput));
+		}
+		return result;
+	}
+#endif
+	// Input Parameters Check - for TargetType != Activator
 	UFunction* Func = nullptr;
 	FString TargetInputWithPrefix;
 	if (IsValid(Node.Target)) {

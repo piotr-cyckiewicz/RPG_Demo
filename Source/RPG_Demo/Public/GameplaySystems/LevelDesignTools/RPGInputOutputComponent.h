@@ -71,6 +71,9 @@ protected:
 	// Name of the built-in input handled by CancelPendingOutputs.
 	static constexpr const TCHAR* CancelPendingInputName = TEXT("CancelPending");
 
+#if WITH_EDITOR
+	inline static bool bValidateInputParametersForIdenticalTargetInputsDone = false;
+#endif
 
 public:
 	UFUNCTION(BlueprintPure)
@@ -81,17 +84,23 @@ public:
 	TArray<FString> GetOutputOptionsWithNoneOption() const;
 	UFUNCTION()
 	TArray<FString> GetInputOptions() const;
+
 	// Class based input finding - works on a SCS template where GetOwner() is null. Needed for Activator TargetType
 	static TArray<FString> GetInputOptionsForClass(const UClass* Class);
 	UFUNCTION()
 	TArray<FString> GetInputOptionsWithNoneOption() const;
 	UFUNCTION()
 	static TArray<FName> GetActorInputs(AActor* Actor);
+	UFUNCTION()
 #if WITH_EDITOR
+	static TArray<FIOParameter> GetInputParametersForTargetInput(FString TargetInput, bool& InputFound);
+
 	// THIS IS VERY HEAVY! It uses asset registry to find all the outputs.
 	static TMap<FName, TArray<struct FIOParameter>> GetAllActorInputs();
-#endif
 	// Loops through every defined OutputNode on this component and returns TArray of found errors.
+#endif
+	UFUNCTION(BlueprintCallable)
+	TArray<FString> ValidateInputParametersForIdenticalTargetInputs();
 	UFUNCTION(BlueprintPure)
 	TArray<FString> ValidateOutputNodes(bool BeforeGameplayStartCheck = true);
 
