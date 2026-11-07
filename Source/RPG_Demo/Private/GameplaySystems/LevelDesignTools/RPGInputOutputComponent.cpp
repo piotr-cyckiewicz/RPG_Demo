@@ -62,9 +62,15 @@ void URPGInputOutputComponent::BeginPlay()
 	}
 #endif
 #if WITH_EDITOR
-	ValidateOutputNodes();
+	auto errors = ValidateOutputNodes();
+	for (auto error : errors) {
+		LoggingFunctionLibrary::PrintError(this, error);
+	}
 	if (!bValidateInputParametersForIdenticalTargetInputsDone) {
-		ValidateInputParametersForIdenticalTargetInputs();
+		errors = ValidateInputParametersForIdenticalTargetInputs();
+		for (auto error : errors) {
+			LoggingFunctionLibrary::PrintError(this, error);
+		}
 		bValidateInputParametersForIdenticalTargetInputsDone = true;
 	}
 #endif
@@ -259,7 +265,6 @@ TMap<FName, TArray<struct FIOParameter>> URPGInputOutputComponent::GetAllActorIn
 
 	return Inputs;
 }
-#endif
 
 TArray<FString> URPGInputOutputComponent::ValidateInputParametersForIdenticalTargetInputs()
 {
@@ -360,6 +365,7 @@ TArray<FString> URPGInputOutputComponent::ValidateInputParametersForIdenticalTar
 
 	return result;
 }
+#endif
 
 TArray<FString> URPGInputOutputComponent::ValidateOutputNodes(bool BeforeGameplayStartCheck)
 {
@@ -438,6 +444,18 @@ TArray<FString> URPGInputOutputComponent::ValidateSingleOutputNode(FOutputNode& 
 		else {
 			result.Add(FString::Printf(TEXT("No input matching TargetInput(%s) was found"), *Node.TargetInput));
 		}
+		return result;
+	}
+
+	int32 ParamCount = 0;
+	for (TFieldIterator<FProperty> It(Func); It; ++It)
+	{
+		if (It->HasAnyPropertyFlags(CPF_Parm) && !It->HasAnyPropertyFlags(CPF_ReturnParm)) ++ParamCount;
+	}
+	if (ParamCount != Node.InputParameters.Num())
+	{
+		result.Add(FString::Printf(TEXT("%s on %s expects %d parameters, node has %d"),
+			*TargetInputWithPrefix, *Node.Target->GetActorNameOrLabel(), ParamCount, Node.InputParameters.Num()));
 		return result;
 	}
 

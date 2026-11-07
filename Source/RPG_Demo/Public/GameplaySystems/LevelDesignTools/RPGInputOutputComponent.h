@@ -98,9 +98,9 @@ public:
 	// THIS IS VERY HEAVY! It uses asset registry to find all the outputs.
 	static TMap<FName, TArray<struct FIOParameter>> GetAllActorInputs();
 	// Loops through every defined OutputNode on this component and returns TArray of found errors.
-#endif
 	UFUNCTION(BlueprintCallable)
 	TArray<FString> ValidateInputParametersForIdenticalTargetInputs();
+#endif
 	UFUNCTION(BlueprintPure)
 	TArray<FString> ValidateOutputNodes(bool BeforeGameplayStartCheck = true);
 
