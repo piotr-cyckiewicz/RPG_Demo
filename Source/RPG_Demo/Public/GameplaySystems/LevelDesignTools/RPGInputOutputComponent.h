@@ -91,8 +91,8 @@ public:
 	TArray<FString> GetInputOptionsWithNoneOption() const;
 	UFUNCTION()
 	static TArray<FName> GetActorInputs(AActor* Actor);
-	UFUNCTION()
 #if WITH_EDITOR
+	UFUNCTION()
 	static TArray<FIOParameter> GetInputParametersForTargetInput(FString TargetInput, bool& InputFound);
 
 	// THIS IS VERY HEAVY! It uses asset registry to find all the outputs.
