@@ -19,5 +19,7 @@ enum class ECombatTeams : uint8
     Enemy1          UMETA(DisplayName = "Enemy 1"),
     Enemy2          UMETA(DisplayName = "Enemy 2"),
     Enemy3          UMETA(DisplayName = "Enemy 3"),
-    Enemy4          UMETA(DisplayName = "Enemy 4")
+    Enemy4          UMETA(DisplayName = "Enemy 4"),
+    Neutral         UMETA(DisplayName = "Neutral"),
+    None            UMETA(DisplayName = "None")
 };
